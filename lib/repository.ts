@@ -664,6 +664,37 @@ export async function updateEventBanner(eventId: string, posterUrl: string) {
   return { ok: true, message: "Event banner updated.", event };
 }
 
+export async function deleteEvent(eventId: string) {
+  if (!eventId) return { ok: false, message: "Event is required." };
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: event, error: eventError } = await supabase.from("events").select("id,event_name").eq("id", eventId).maybeSingle();
+    if (eventError) return { ok: false, message: eventError.message };
+    if (!event) return { ok: false, message: "Event not found." };
+
+    const { error } = await supabase.from("events").delete().eq("id", eventId);
+    if (error) return { ok: false, message: error.message };
+
+    return { ok: true, message: `${event.event_name} deleted.` };
+  }
+
+  const s = state();
+  const eventIndex = s.events.findIndex((event) => event.id === eventId);
+  if (eventIndex === -1) return { ok: false, message: "Event not found." };
+
+  const [event] = s.events.splice(eventIndex, 1);
+  s.eventSellers = s.eventSellers.filter((item) => item.event_id !== eventId);
+  s.eventProducts = s.eventProducts.filter((item) => item.event_id !== eventId);
+  s.registrations = s.registrations.filter((item) => item.event_id !== eventId);
+  s.responses = s.responses.filter((item) => item.event_id !== eventId);
+  s.attendance = s.attendance.filter((item) => item.event_id !== eventId);
+  s.qrs = s.qrs.filter((item) => item.event_id !== eventId);
+  s.claims = s.claims.filter((item) => item.event_id !== eventId);
+
+  return { ok: true, message: `${event.event_name} deleted.` };
+}
+
 function parseLines(value: FormDataEntryValue | null) {
   return String(value || "")
     .split(/\r?\n/)

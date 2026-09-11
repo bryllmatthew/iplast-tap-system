@@ -12,12 +12,13 @@ import {
   addProduct,
   checkInCreator,
   createEvent,
+  deleteEvent,
   issueSampleClaim,
   setRegistrationStatus,
   submitRegistration,
   updateEventBanner
 } from "@/lib/repository";
-import { ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, userHasRole } from "@/lib/auth";
+import { ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, requireAuth, userHasRole } from "@/lib/auth";
 import { cleanEnv } from "@/lib/clean-env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -203,6 +204,28 @@ export async function updateEventBannerAction(formData: FormData) {
   revalidatePath(`/admin/events/${eventId}`);
   revalidatePath("/admin/events");
   redirect(`/admin/events/${eventId}?${params.toString()}`);
+}
+
+export async function deleteEventAction(formData: FormData) {
+  await requireAuth("admin");
+
+  const eventId = String(formData.get("event_id") || "");
+  const result = await deleteEvent(eventId);
+  const params = new URLSearchParams({
+    message: result.message,
+    result: result.ok ? "success" : "error"
+  });
+
+  revalidatePath("/");
+  revalidatePath("/landing");
+  revalidatePath("/events");
+  revalidatePath("/admin");
+  revalidatePath("/admin/events");
+  revalidatePath("/admin/registrations");
+  revalidatePath("/admin/creators");
+  revalidatePath("/seller");
+  revalidatePath("/seller/events");
+  redirect(`/admin/events?${params.toString()}`);
 }
 
 export async function addEventSellerAction(formData: FormData) {

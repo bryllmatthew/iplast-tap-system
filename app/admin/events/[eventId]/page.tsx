@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BadgeCheck, ClipboardList, QrCode, Store } from "lucide-react";
 
 import { updateEventBannerAction } from "@/app/actions";
+import { DeleteEventButton } from "@/components/DeleteEventButton";
 import { number, shortDate } from "@/lib/format";
 import { getEventById, listRegistrations, listSellerDashboard } from "@/lib/repository";
 import { eventStatusClass } from "@/lib/status";
@@ -53,6 +54,15 @@ export default async function AdminEventHubPage({
               {query.bannerMessage}
             </div>
           ) : null}
+          <div className="mt-5 border-t border-slate-200 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-ink">Danger Zone</p>
+                <p className="mt-1 text-sm text-slate-500">Delete this event and its event-specific records from Supabase.</p>
+              </div>
+              <DeleteEventButton eventId={event.id} eventName={event.event_name} />
+            </div>
+          </div>
         </div>
       </div>
 

@@ -5,7 +5,12 @@ import { number, shortDate } from "@/lib/format";
 import { listEvents, listRegistrations } from "@/lib/repository";
 import { eventStatusClass } from "@/lib/status";
 
-export default async function EventsPage() {
+export default async function EventsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ message?: string; result?: string }>;
+}) {
+  const query = await searchParams;
   const events = await listEvents();
   const rows = await Promise.all(
     events.map(async (event) => ({
@@ -27,6 +32,15 @@ export default async function EventsPage() {
             New Event
           </Link>
         </div>
+        {query.message ? (
+          <div
+            className={`mt-4 rounded-lg border p-3 text-sm font-bold ${
+              query.result === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"
+            }`}
+          >
+            {query.message}
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-4">

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 
 import {
@@ -240,7 +241,7 @@ function claimFromRow(row: Record<string, unknown>): SampleClaim {
   };
 }
 
-async function listDbEvents() {
+async function listDbEventsUncached() {
   const supabase = createServiceClient();
   if (!supabase) return null;
 
@@ -259,7 +260,9 @@ async function listDbEvents() {
   return data.map(eventFromRow);
 }
 
-async function loadDbState(): Promise<DemoState | null> {
+const listDbEvents = cache(listDbEventsUncached);
+
+async function loadDbStateUncached(): Promise<DemoState | null> {
   const supabase = createServiceClient();
   if (!supabase) return null;
 
@@ -341,6 +344,8 @@ async function loadDbState(): Promise<DemoState | null> {
     }))
   };
 }
+
+const loadDbState = cache(loadDbStateUncached);
 
 async function ensureOrganization() {
   const supabase = createServiceClient();

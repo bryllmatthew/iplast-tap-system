@@ -409,6 +409,18 @@ function uid(prefix: string) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function unique(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
+function mapById<T extends { id: string }>(rows: T[]) {
+  return new Map(rows.map((row) => [row.id, row]));
+}
+
+function mapBy<T>(rows: T[], key: (row: T) => string) {
+  return new Map(rows.map((row) => [key(row), row]));
+}
+
 function ensureCreatorQr(registration: Registration, status?: CreatorQr["status"]) {
   const s = state();
   let qr = s.qrs.find((item) => item.event_id === registration.event_id && item.creator_id === registration.creator_id);
@@ -1075,6 +1087,76 @@ export async function getAdminOverview() {
 
 export async function listRegistrations(eventId?: string, query = ""): Promise<RegistrationRow[]> {
   const needle = query.trim().toLowerCase();
+  const supabase = createServiceClient();
+  if (supabase) {
+    let registrationQuery = supabase
+      .from("event_registrations")
+      .select("id,event_id,creator_id,form_response_id,registration_status,registered_at,approved_at,notes")
+      .order("registered_at", { ascending: false });
+
+    if (eventId) {
+      registrationQuery = registrationQuery.eq("event_id", eventId);
+    }
+
+    const { data: registrationRows, error: registrationError } = await registrationQuery;
+    if (registrationError) {
+      console.error("Failed to load registrations", registrationError);
+      return [];
+    }
+    if (!registrationRows?.length) return [];
+
+    const registrations = registrationRows.map(registrationFromRow);
+    const creatorIds = unique(registrations.map((registration) => registration.creator_id));
+    const responseIds = unique(registrations.map((registration) => registration.form_response_id));
+    const registrationIds = unique(registrations.map((registration) => registration.id));
+
+    const [creatorsResult, responsesResult, attendanceResult, qrsResult] = await Promise.all([
+      supabase
+        .from("creators")
+        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+        .in("id", creatorIds),
+      supabase
+        .from("event_form_responses")
+        .select("id,event_id,creator_id,form_version_id,field_snapshot,answers,submitted_at")
+        .in("id", responseIds),
+      supabase
+        .from("event_attendance")
+        .select("id,event_id,creator_id,registration_id,status,checked_in_at,checked_in_by")
+        .in("registration_id", registrationIds),
+      supabase
+        .from("creator_event_qr")
+        .select("id,event_id,creator_id,registration_id,attendance_id,qr_token,qr_url,status,generated_at,last_scanned_at")
+        .in("registration_id", registrationIds)
+    ]);
+
+    const error = [creatorsResult.error, responsesResult.error, attendanceResult.error, qrsResult.error].find(Boolean);
+    if (error) {
+      console.error("Failed to load registration relations", error);
+      return [];
+    }
+
+    const creators = mapById((creatorsResult.data || []).map(creatorFromRow));
+    const responses = mapById((responsesResult.data || []).map(formResponseFromRow));
+    const attendance = mapBy((attendanceResult.data || []).map(attendanceFromRow), (row) => row.registration_id);
+    const qrs = mapBy((qrsResult.data || []).map(qrFromRow), (row) => row.registration_id);
+
+    return registrations
+      .map((registration) => ({
+        registration,
+        creator: creators.get(registration.creator_id)!,
+        attendance: attendance.get(registration.id),
+        response: responses.get(registration.form_response_id),
+        qr: qrs.get(registration.id)
+      }))
+      .filter((row) => row.creator)
+      .filter((row) => {
+        if (!needle) return true;
+        return [row.creator.full_name, row.creator.tiktok_username, row.creator.mobile, row.creator.email].some((value) =>
+          value.toLowerCase().includes(needle)
+        );
+      });
+  }
+
   const s = (await loadDbState()) || state();
 
   return s.registrations
@@ -1106,6 +1188,62 @@ export async function getRegistrationDetail(registrationId: string) {
 
 export async function listAttendedCreators(query = "") {
   const needle = query.trim().toLowerCase();
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: attendanceRows, error } = await supabase
+      .from("event_attendance")
+      .select("id,event_id,creator_id,registration_id,status,checked_in_at,checked_in_by")
+      .eq("status", "checked_in")
+      .order("checked_in_at", { ascending: false });
+    if (error) {
+      console.error("Failed to load attended creators", error);
+      return [];
+    }
+    const attendanceRowsMapped = (attendanceRows || []).map(attendanceFromRow);
+    if (!attendanceRowsMapped.length) return [];
+
+    const [creatorsResult, registrationsResult, eventsResult, claimsResult] = await Promise.all([
+      supabase
+        .from("creators")
+        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+        .in("id", unique(attendanceRowsMapped.map((attendance) => attendance.creator_id))),
+      supabase
+        .from("event_registrations")
+        .select("id,event_id,creator_id,form_response_id,registration_status,registered_at,approved_at,notes")
+        .in("id", unique(attendanceRowsMapped.map((attendance) => attendance.registration_id))),
+      supabase.from("events").select(eventSelect).in("id", unique(attendanceRowsMapped.map((attendance) => attendance.event_id))),
+      supabase
+        .from("sample_claims")
+        .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
+        .in("creator_id", unique(attendanceRowsMapped.map((attendance) => attendance.creator_id)))
+        .eq("status", "claimed")
+    ]);
+
+    const creators = mapById((creatorsResult.data || []).map(creatorFromRow));
+    const registrations = mapById((registrationsResult.data || []).map(registrationFromRow));
+    const events = mapById((eventsResult.data || []).map(eventFromRow));
+    const claims = (claimsResult.data || []).map(claimFromRow);
+
+    return attendanceRowsMapped
+      .map((attendance) => {
+        const creator = creators.get(attendance.creator_id)!;
+        return {
+          creator,
+          attendance,
+          registration: registrations.get(attendance.registration_id)!,
+          event: events.get(attendance.event_id) || demoEvent,
+          claims: claims.filter((claim) => claim.creator_id === attendance.creator_id)
+        };
+      })
+      .filter((row) => row.creator && row.registration)
+      .filter(({ creator }) => {
+        if (!needle) return true;
+        return [creator.full_name, creator.tiktok_username, creator.email, creator.mobile].some((value) =>
+          value.toLowerCase().includes(needle)
+        );
+      });
+  }
+
   const s = (await loadDbState()) || state();
 
   return s.attendance
@@ -1126,6 +1264,96 @@ export async function listAttendedCreators(query = "") {
 }
 
 export async function getCreatorDetail(creatorId: string) {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: creatorRow, error } = await supabase
+      .from("creators")
+      .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+      .eq("id", creatorId)
+      .maybeSingle();
+    if (error) console.error("Failed to load creator detail", error);
+    if (!creatorRow) return null;
+
+    const creator = creatorFromRow(creatorRow);
+    const { data: registrationRows } = await supabase
+      .from("event_registrations")
+      .select("id,event_id,creator_id,form_response_id,registration_status,registered_at,approved_at,notes")
+      .eq("creator_id", creator.id)
+      .order("registered_at", { ascending: false });
+    const registrationsRaw = (registrationRows || []).map(registrationFromRow);
+
+    const [eventsResult, attendanceResult, responsesResult, qrsResult, claimsResult] = await Promise.all([
+      registrationsRaw.length
+        ? supabase.from("events").select(eventSelect).in("id", unique(registrationsRaw.map((registration) => registration.event_id)))
+        : Promise.resolve({ data: [], error: null }),
+      registrationsRaw.length
+        ? supabase
+          .from("event_attendance")
+          .select("id,event_id,creator_id,registration_id,status,checked_in_at,checked_in_by")
+          .in("registration_id", unique(registrationsRaw.map((registration) => registration.id)))
+        : Promise.resolve({ data: [], error: null }),
+      registrationsRaw.length
+        ? supabase
+          .from("event_form_responses")
+          .select("id,event_id,creator_id,form_version_id,field_snapshot,answers,submitted_at")
+          .in("id", unique(registrationsRaw.map((registration) => registration.form_response_id)))
+        : Promise.resolve({ data: [], error: null }),
+      registrationsRaw.length
+        ? supabase
+          .from("creator_event_qr")
+          .select("id,event_id,creator_id,registration_id,attendance_id,qr_token,qr_url,status,generated_at,last_scanned_at")
+          .in("registration_id", unique(registrationsRaw.map((registration) => registration.id)))
+        : Promise.resolve({ data: [], error: null }),
+      supabase
+        .from("sample_claims")
+        .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
+        .eq("creator_id", creator.id)
+    ]);
+
+    const events = mapById((eventsResult.data || []).map(eventFromRow));
+    const attendance = mapBy((attendanceResult.data || []).map(attendanceFromRow), (row) => row.registration_id);
+    const responses = mapById((responsesResult.data || []).map(formResponseFromRow));
+    const qrs = mapBy((qrsResult.data || []).map(qrFromRow), (row) => row.registration_id);
+    const claims = (claimsResult.data || []).map(claimFromRow);
+
+    const [claimEventsResult, claimBrandsResult, claimProductsResult, claimSellersResult] = await Promise.all([
+      claims.length ? supabase.from("events").select(eventSelect).in("id", unique(claims.map((claim) => claim.event_id))) : Promise.resolve({ data: [], error: null }),
+      claims.length ? supabase.from("brands").select("id,seller_id,brand_name,logo_url,description,status").in("id", unique(claims.map((claim) => claim.brand_id))) : Promise.resolve({ data: [], error: null }),
+      claims.length
+        ? supabase
+          .from("products")
+          .select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status")
+          .in("id", unique(claims.map((claim) => claim.product_id)))
+        : Promise.resolve({ data: [], error: null }),
+      claims.length ? supabase.from("sellers").select("id,company_name,contact_name,email,phone,logo_url,status").in("id", unique(claims.map((claim) => claim.seller_id))) : Promise.resolve({ data: [], error: null })
+    ]);
+
+    const claimEvents = mapById((claimEventsResult.data || []).map(eventFromRow));
+    const claimBrands = mapById((claimBrandsResult.data || []).map(brandFromRow));
+    const claimProducts = mapById((claimProductsResult.data || []).map(productFromRow));
+    const claimSellers = mapById((claimSellersResult.data || []).map(sellerFromRow));
+
+    return {
+      creator,
+      registrations: registrationsRaw.map((registration) => ({
+        registration,
+        event: events.get(registration.event_id) || demoEvent,
+        attendance: attendance.get(registration.id),
+        response: responses.get(registration.form_response_id),
+        qr: qrs.get(registration.id)
+      })),
+      sampleClaims: claims
+        .map((claim) => ({
+          claim,
+          event: claimEvents.get(claim.event_id) || demoEvent,
+          brand: claimBrands.get(claim.brand_id)!,
+          product: claimProducts.get(claim.product_id)!,
+          seller: claimSellers.get(claim.seller_id) || demoSeller
+        }))
+        .filter((row) => row.brand && row.product)
+    };
+  }
+
   const s = (await loadDbState()) || state();
   const creator = s.creators.find((item) => item.id === creatorId);
   if (!creator) return null;
@@ -1443,6 +1671,79 @@ export async function checkInCreator(registrationId: string) {
 }
 
 export async function validateQrForSeller(eventId: string, token: string): Promise<QrValidation> {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: qrRow, error: qrError } = await supabase
+      .from("creator_event_qr")
+      .select("id,event_id,creator_id,registration_id,attendance_id,qr_token,qr_url,status,generated_at,last_scanned_at")
+      .eq("qr_token", token)
+      .maybeSingle();
+    if (qrError) console.error("Failed to load QR", qrError);
+    if (!qrRow) return { ok: false, code: "not_found", message: "QR token was not found." };
+
+    const qr = qrFromRow(qrRow);
+    const [eventResult, creatorResult, registrationResult, attendanceResult, claimsResult] = await Promise.all([
+      supabase.from("events").select(eventSelect).eq("id", qr.event_id).maybeSingle(),
+      supabase
+        .from("creators")
+        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+        .eq("id", qr.creator_id)
+        .maybeSingle(),
+      supabase
+        .from("event_registrations")
+        .select("id,event_id,creator_id,form_response_id,registration_status,registered_at,approved_at,notes")
+        .eq("id", qr.registration_id)
+        .maybeSingle(),
+      qr.attendance_id
+        ? supabase
+          .from("event_attendance")
+          .select("id,event_id,creator_id,registration_id,status,checked_in_at,checked_in_by")
+          .eq("id", qr.attendance_id)
+          .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      supabase
+        .from("sample_claims")
+        .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
+        .eq("event_id", eventId)
+        .eq("creator_id", qr.creator_id)
+        .eq("status", "claimed")
+    ]);
+
+    const event = eventResult.data ? eventFromRow(eventResult.data) : demoEvent;
+    const creator = creatorResult.data ? creatorFromRow(creatorResult.data) : undefined;
+    const registration = registrationResult.data ? registrationFromRow(registrationResult.data) : undefined;
+    const attendance = attendanceResult.data ? attendanceFromRow(attendanceResult.data) : undefined;
+
+    if (qr.event_id !== eventId) {
+      return { ok: false, code: "wrong_event", message: "This QR belongs to a different event.", event, creator, qr, registration, attendance };
+    }
+    if (qr.status === "revoked" || registration?.registration_status === "rejected" || registration?.registration_status === "cancelled") {
+      return { ok: false, code: "revoked", message: "This QR is not eligible for sample claims.", event, creator, qr, registration, attendance };
+    }
+    if (registration?.registration_status !== "approved") {
+      return { ok: false, code: "pending_approval", message: "This creator is registered but not approved yet.", event, creator, qr, registration, attendance };
+    }
+    if (qr.status !== "active" || attendance?.status !== "checked_in") {
+      return { ok: false, code: "not_checked_in", message: "This creator is approved but has not been checked in yet.", event, creator, qr, registration, attendance };
+    }
+
+    await supabase.from("creator_event_qr").update({ last_scanned_at: new Date().toISOString() }).eq("id", qr.id);
+
+    return {
+      ok: true,
+      code: "eligible",
+      message: "Creator is eligible for sample claims.",
+      data: {
+        event,
+        creator: creator!,
+        qr,
+        registration: registration!,
+        attendance: attendance!,
+        alreadyClaimedProductIds: (claimsResult.data || []).map((claim) => String(claim.product_id))
+      }
+    };
+  }
+
   const s = (await loadDbState()) || state();
   const qr = s.qrs.find((item) => item.qr_token === token);
   if (!qr) return { ok: false, code: "not_found", message: "QR token was not found." };
@@ -1590,6 +1891,88 @@ export async function issueSampleClaim(eventId: string, token: string, productId
 }
 
 export async function listSellerDashboard() {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: sellerRow, error: sellerError } = await supabase
+      .from("sellers")
+      .select("id,company_name,contact_name,email,phone,logo_url,status")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (sellerError) console.error("Failed to load seller dashboard", sellerError);
+    if (!sellerRow) {
+      const s = state();
+      return {
+        event: demoEvent,
+        seller: demoSeller,
+        eventSeller: demoEventSeller,
+        brands: s.brands,
+        products: s.products,
+        eventProducts: s.eventProducts,
+        claims: s.claims,
+        creatorsScanned: 0,
+        uniqueCreators: 0,
+        samplesIssued: 0
+      };
+    }
+
+    const seller = sellerFromRow(sellerRow);
+    const { data: brandRows } = await supabase
+      .from("brands")
+      .select("id,seller_id,brand_name,logo_url,description,status")
+      .eq("seller_id", seller.id);
+    const brands = (brandRows || []).map(brandFromRow);
+    const brandIds = unique(brands.map((brand) => brand.id));
+
+    const [productResult, eventSellerResult, claimsResult, scansResult] = await Promise.all([
+      brandIds.length
+        ? supabase
+          .from("products")
+          .select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status")
+          .in("brand_id", brandIds)
+        : Promise.resolve({ data: [], error: null }),
+      supabase
+        .from("event_sellers")
+        .select("id,event_id,seller_id,booth_name,booth_number,status")
+        .eq("seller_id", seller.id)
+        .order("created_at", { ascending: false })
+        .limit(1),
+      supabase
+        .from("sample_claims")
+        .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
+        .eq("seller_id", seller.id)
+        .eq("status", "claimed"),
+      supabase.from("qr_scans").select("id", { count: "exact", head: true }).eq("seller_id", seller.id)
+    ]);
+
+    const products = (productResult.data || []).map(productFromRow);
+    const productIds = unique(products.map((product) => product.id));
+    const eventSeller = eventSellerResult.data?.[0] ? eventSellerFromRow(eventSellerResult.data[0]) : demoEventSeller;
+    const claims = (claimsResult.data || []).map(claimFromRow);
+    const event = await getEventById(eventSeller.event_id);
+
+    const { data: eventProductRows } = productIds.length
+      ? await supabase
+        .from("event_products")
+        .select("id,event_id,product_id,available_quantity,max_claims_per_creator,status")
+        .in("product_id", productIds)
+      : { data: [] };
+
+    const uniqueCreators = new Set(claims.map((claim) => claim.creator_id));
+    return {
+      event: event || demoEvent,
+      seller,
+      eventSeller,
+      brands,
+      products,
+      eventProducts: (eventProductRows || []).map(eventProductFromRow),
+      claims,
+      creatorsScanned: scansResult.count || 0,
+      uniqueCreators: uniqueCreators.size,
+      samplesIssued: claims.reduce((total, claim) => total + claim.quantity, 0)
+    };
+  }
+
   const s = (await loadDbState()) || state();
   const claims = s.claims.filter((claim) => claim.status === "claimed");
   const uniqueCreators = new Set(claims.map((claim) => claim.creator_id));
@@ -1611,6 +1994,48 @@ export async function listSellerDashboard() {
 }
 
 export async function getClaimRows() {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: claimRows, error } = await supabase
+      .from("sample_claims")
+      .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
+      .order("claimed_at", { ascending: false });
+    if (error) {
+      console.error("Failed to load claims", error);
+      return [];
+    }
+    const claims = (claimRows || []).map(claimFromRow);
+    if (!claims.length) return [];
+
+    const [eventsResult, creatorsResult, brandsResult, productsResult] = await Promise.all([
+      supabase.from("events").select(eventSelect).in("id", unique(claims.map((claim) => claim.event_id))),
+      supabase
+        .from("creators")
+        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+        .in("id", unique(claims.map((claim) => claim.creator_id))),
+      supabase.from("brands").select("id,seller_id,brand_name,logo_url,description,status").in("id", unique(claims.map((claim) => claim.brand_id))),
+      supabase
+        .from("products")
+        .select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status")
+        .in("id", unique(claims.map((claim) => claim.product_id)))
+    ]);
+
+    const events = mapById((eventsResult.data || []).map(eventFromRow));
+    const creators = mapById((creatorsResult.data || []).map(creatorFromRow));
+    const brands = mapById((brandsResult.data || []).map(brandFromRow));
+    const products = mapById((productsResult.data || []).map(productFromRow));
+
+    return claims
+      .map((claim) => ({
+        claim,
+        event: events.get(claim.event_id) || demoEvent,
+        creator: creators.get(claim.creator_id)!,
+        brand: brands.get(claim.brand_id)!,
+        product: products.get(claim.product_id)!
+      }))
+      .filter((row) => row.creator && row.brand && row.product);
+  }
+
   const s = (await loadDbState()) || state();
   return s.claims.map((claim) => ({
     claim,
@@ -1638,6 +2063,48 @@ export async function listSellerProductRows() {
 }
 
 export async function getQrPage(token: string) {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: qrRow, error } = await supabase
+      .from("creator_event_qr")
+      .select("id,event_id,creator_id,registration_id,attendance_id,qr_token,qr_url,status,generated_at,last_scanned_at")
+      .eq("qr_token", token)
+      .maybeSingle();
+    if (error) console.error("Failed to load QR page", error);
+    if (!qrRow) return null;
+
+    const qr = qrFromRow(qrRow);
+    const [eventResult, creatorResult, registrationResult, attendanceResult] = await Promise.all([
+      supabase.from("events").select(eventSelect).eq("id", qr.event_id).maybeSingle(),
+      supabase
+        .from("creators")
+        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+        .eq("id", qr.creator_id)
+        .maybeSingle(),
+      supabase
+        .from("event_registrations")
+        .select("id,event_id,creator_id,form_response_id,registration_status,registered_at,approved_at,notes")
+        .eq("id", qr.registration_id)
+        .maybeSingle(),
+      qr.attendance_id
+        ? supabase
+          .from("event_attendance")
+          .select("id,event_id,creator_id,registration_id,status,checked_in_at,checked_in_by")
+          .eq("id", qr.attendance_id)
+          .maybeSingle()
+        : Promise.resolve({ data: null, error: null })
+    ]);
+
+    if (!eventResult.data || !creatorResult.data) return null;
+    return {
+      event: eventFromRow(eventResult.data),
+      creator: creatorFromRow(creatorResult.data),
+      registration: registrationResult.data ? registrationFromRow(registrationResult.data) : undefined,
+      attendance: attendanceResult.data ? attendanceFromRow(attendanceResult.data) : undefined,
+      qr
+    };
+  }
+
   const s = (await loadDbState()) || state();
   const qr = s.qrs.find((item) => item.qr_token === token);
   if (!qr) return null;

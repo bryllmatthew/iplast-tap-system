@@ -39,7 +39,10 @@ async function savePublicUpload(file: File) {
     const bytes = Buffer.from(await file.arrayBuffer());
 
     const { error: bucketError } = await supabase.storage.createBucket(bucket, { public: true });
-    if (bucketError && !/already exists/i.test(bucketError.message)) {
+    const bucketStatus =
+      (bucketError as { status?: number | string; statusCode?: number | string } | null)?.status ??
+      (bucketError as { status?: number | string; statusCode?: number | string } | null)?.statusCode;
+    if (bucketError && bucketStatus !== 409 && !/already exists|resource already exists/i.test(bucketError.message)) {
       throw bucketError;
     }
 

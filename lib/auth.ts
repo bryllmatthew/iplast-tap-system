@@ -11,7 +11,6 @@ const adminUsername = "TAPAdmin";
 const adminEmail = process.env.TAP_ADMIN_EMAIL || "tapadmin@iplast.ai";
 const adminPassword = process.env.TAP_ADMIN_PASSWORD || "iPlastTAP123!";
 const defaultOrganizationId = "00000000-0000-0000-0000-000000000001";
-const defaultEventId = "10000000-0000-0000-0000-000000000001";
 
 function createServiceClient() {
   const url = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -118,17 +117,6 @@ export async function ensureSellerAuthUser(seller: Seller, password: string) {
     },
     { onConflict: "seller_id,user_id" }
   );
-  await admin.from("event_sellers").upsert(
-    {
-      event_id: defaultEventId,
-      seller_id: dbSeller.id,
-      booth_name: `${seller.company_name} Booth`,
-      booth_number: "Assigned by TAP",
-      status: "active"
-    },
-    { onConflict: "event_id,seller_id" }
-  );
-
   return user;
 }
 

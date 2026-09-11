@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
+
 import {
   demoAttendance,
   demoBrands,
@@ -15,6 +17,7 @@ import {
   demoResponses,
   demoSeller
 } from "@/lib/demo-data";
+import { cleanEnv } from "@/lib/clean-env";
 import { siteUrl } from "@/lib/env";
 import type {
   Attendance,
@@ -23,7 +26,10 @@ import type {
   CreatorQr,
   Event,
   EventProduct,
+  EventStatus,
   EventSeller,
+  FormField,
+  FormVersion,
   FormResponse,
   Product,
   Registration,
@@ -49,6 +55,305 @@ type DemoState = {
   claims: SampleClaim[];
   sellerInvites: SellerInvite[];
 };
+
+const defaultOrganizationId = "00000000-0000-0000-0000-000000000001";
+const eventSelect =
+  "id,event_name,event_slug,description,venue,address,event_date,start_time,end_time,registration_start,registration_end,maximum_creator_capacity,poster_url,status";
+
+function createServiceClient() {
+  const url = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const key = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+  if (!url || !key) return null;
+
+  return createSupabaseAdmin(url, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+}
+
+function eventFromRow(row: Record<string, unknown>): Event {
+  return {
+    id: String(row.id),
+    event_name: String(row.event_name || ""),
+    event_slug: String(row.event_slug || ""),
+    description: String(row.description || ""),
+    venue: String(row.venue || ""),
+    address: String(row.address || ""),
+    event_date: String(row.event_date || ""),
+    start_time: String(row.start_time || "").slice(0, 5),
+    end_time: String(row.end_time || "").slice(0, 5),
+    registration_start: String(row.registration_start || ""),
+    registration_end: String(row.registration_end || ""),
+    maximum_creator_capacity: Number(row.maximum_creator_capacity || 300),
+    poster_url: String(row.poster_url || ""),
+    status: String(row.status || "draft") as EventStatus
+  };
+}
+
+function sellerFromRow(row: Record<string, unknown>): Seller {
+  return {
+    id: String(row.id),
+    company_name: String(row.company_name || ""),
+    contact_name: String(row.contact_name || ""),
+    email: String(row.email || ""),
+    phone: String(row.phone || ""),
+    logo_url: row.logo_url ? String(row.logo_url) : undefined,
+    status: String(row.status || "active") as Seller["status"]
+  };
+}
+
+function brandFromRow(row: Record<string, unknown>): Brand {
+  return {
+    id: String(row.id),
+    seller_id: String(row.seller_id),
+    brand_name: String(row.brand_name || ""),
+    logo_url: row.logo_url ? String(row.logo_url) : undefined,
+    description: String(row.description || ""),
+    status: String(row.status || "active") as Brand["status"]
+  };
+}
+
+function productFromRow(row: Record<string, unknown>): Product {
+  return {
+    id: String(row.id),
+    brand_id: String(row.brand_id),
+    product_name: String(row.product_name || ""),
+    sku: String(row.sku || ""),
+    image_url: row.image_url ? String(row.image_url) : undefined,
+    description: String(row.description || ""),
+    sample_inventory: Number(row.sample_inventory || 0),
+    max_claims_per_creator: Number(row.max_claims_per_creator || 1),
+    status: String(row.status || "active") as Product["status"]
+  };
+}
+
+function creatorFromRow(row: Record<string, unknown>): Creator {
+  return {
+    id: String(row.id),
+    full_name: String(row.full_name || ""),
+    tiktok_username: String(row.tiktok_username || ""),
+    tiktok_profile_url: String(row.tiktok_profile_url || ""),
+    email: String(row.email || ""),
+    mobile: String(row.mobile || ""),
+    location: String(row.location || ""),
+    follower_count: Number(row.follower_count || 0),
+    gmv_max_total: Number(row.gmv_max_total || 0),
+    creator_category: String(row.creator_category || ""),
+    content_categories: Array.isArray(row.content_categories) ? row.content_categories.map(String) : [],
+    affiliate_experience: String(row.affiliate_experience || ""),
+    profile_image: row.profile_image ? String(row.profile_image) : undefined,
+    notes: row.notes ? String(row.notes) : undefined
+  };
+}
+
+function registrationFromRow(row: Record<string, unknown>): Registration {
+  return {
+    id: String(row.id),
+    event_id: String(row.event_id),
+    creator_id: String(row.creator_id),
+    form_response_id: String(row.form_response_id),
+    registration_status: String(row.registration_status || "pending") as Registration["registration_status"],
+    registered_at: String(row.registered_at || ""),
+    approved_at: row.approved_at ? String(row.approved_at) : undefined,
+    notes: row.notes ? String(row.notes) : undefined
+  };
+}
+
+function attendanceFromRow(row: Record<string, unknown>): Attendance {
+  return {
+    id: String(row.id),
+    event_id: String(row.event_id),
+    creator_id: String(row.creator_id),
+    registration_id: String(row.registration_id),
+    status: String(row.status || "checked_in") as Attendance["status"],
+    checked_in_at: row.checked_in_at ? String(row.checked_in_at) : undefined,
+    checked_in_by: row.checked_in_by ? String(row.checked_in_by) : undefined
+  };
+}
+
+function qrFromRow(row: Record<string, unknown>): CreatorQr {
+  return {
+    id: String(row.id),
+    event_id: String(row.event_id),
+    creator_id: String(row.creator_id),
+    registration_id: String(row.registration_id),
+    attendance_id: row.attendance_id ? String(row.attendance_id) : undefined,
+    qr_token: String(row.qr_token),
+    qr_url: String(row.qr_url || `${siteUrl()}/qr/${row.qr_token}`),
+    status: String(row.status || "pending_approval") as CreatorQr["status"],
+    generated_at: String(row.generated_at || ""),
+    last_scanned_at: row.last_scanned_at ? String(row.last_scanned_at) : undefined
+  };
+}
+
+function formResponseFromRow(row: Record<string, unknown>): FormResponse {
+  return {
+    id: String(row.id),
+    event_id: String(row.event_id),
+    creator_id: String(row.creator_id),
+    form_version_id: String(row.form_version_id),
+    field_snapshot: Array.isArray(row.field_snapshot) ? (row.field_snapshot as FormField[]) : [],
+    answers: (row.answers || {}) as Record<string, unknown>,
+    submitted_at: String(row.submitted_at || "")
+  };
+}
+
+function eventSellerFromRow(row: Record<string, unknown>): EventSeller {
+  return {
+    id: String(row.id),
+    event_id: String(row.event_id),
+    seller_id: String(row.seller_id),
+    booth_name: String(row.booth_name || ""),
+    booth_number: String(row.booth_number || ""),
+    status: String(row.status || "active") as EventSeller["status"]
+  };
+}
+
+function eventProductFromRow(row: Record<string, unknown>): EventProduct {
+  return {
+    id: String(row.id),
+    event_id: String(row.event_id),
+    product_id: String(row.product_id),
+    available_quantity: Number(row.available_quantity || 0),
+    max_claims_per_creator: Number(row.max_claims_per_creator || 1),
+    status: String(row.status || "active") as EventProduct["status"]
+  };
+}
+
+function claimFromRow(row: Record<string, unknown>): SampleClaim {
+  return {
+    id: String(row.id),
+    event_id: String(row.event_id),
+    creator_id: String(row.creator_id),
+    seller_id: String(row.seller_id),
+    brand_id: String(row.brand_id),
+    product_id: String(row.product_id),
+    quantity: Number(row.quantity || 1),
+    claimed_at: String(row.claimed_at || ""),
+    claimed_by: String(row.claimed_by || "Seller Staff"),
+    booth_id: row.booth_id ? String(row.booth_id) : undefined,
+    qr_scan_id: row.qr_scan_id ? String(row.qr_scan_id) : undefined,
+    status: String(row.status || "claimed") as SampleClaim["status"]
+  };
+}
+
+async function listDbEvents() {
+  const supabase = createServiceClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("events")
+    .select(
+      eventSelect
+    )
+    .order("event_date", { ascending: false });
+
+  if (error) {
+    console.error("Failed to load Supabase events", error);
+    return null;
+  }
+
+  return data.map(eventFromRow);
+}
+
+async function loadDbState(): Promise<DemoState | null> {
+  const supabase = createServiceClient();
+  if (!supabase) return null;
+
+  const [
+    events,
+    sellers,
+    eventSellers,
+    creators,
+    responses,
+    registrations,
+    attendance,
+    qrs,
+    brands,
+    products,
+    eventProducts,
+    claims,
+    sellerInvites
+  ] = await Promise.all([
+    supabase.from("events").select(eventSelect).order("event_date", { ascending: false }),
+    supabase.from("sellers").select("id,company_name,contact_name,email,phone,logo_url,status").order("created_at", { ascending: false }),
+    supabase.from("event_sellers").select("id,event_id,seller_id,booth_name,booth_number,status"),
+    supabase
+      .from("creators")
+      .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+      .order("created_at", { ascending: false }),
+    supabase.from("event_form_responses").select("id,event_id,creator_id,form_version_id,field_snapshot,answers,submitted_at"),
+    supabase.from("event_registrations").select("id,event_id,creator_id,form_response_id,registration_status,registered_at,approved_at,notes"),
+    supabase.from("event_attendance").select("id,event_id,creator_id,registration_id,status,checked_in_at,checked_in_by"),
+    supabase.from("creator_event_qr").select("id,event_id,creator_id,registration_id,attendance_id,qr_token,qr_url,status,generated_at,last_scanned_at"),
+    supabase.from("brands").select("id,seller_id,brand_name,logo_url,description,status"),
+    supabase.from("products").select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status"),
+    supabase.from("event_products").select("id,event_id,product_id,available_quantity,max_claims_per_creator,status"),
+    supabase.from("sample_claims").select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status"),
+    supabase.from("seller_invites").select("id,seller_id,email,login_url,temporary_password,created_at,status")
+  ]);
+
+  const error = [
+    events.error,
+    sellers.error,
+    eventSellers.error,
+    creators.error,
+    responses.error,
+    registrations.error,
+    attendance.error,
+    qrs.error,
+    brands.error,
+    products.error,
+    eventProducts.error,
+    claims.error,
+    sellerInvites.error
+  ].find(Boolean);
+
+  if (error) {
+    console.error("Failed to load Supabase data", error);
+    return null;
+  }
+
+  return {
+    events: (events.data || []).map(eventFromRow),
+    sellers: (sellers.data || []).map(sellerFromRow),
+    eventSellers: (eventSellers.data || []).map(eventSellerFromRow),
+    creators: (creators.data || []).map(creatorFromRow),
+    responses: (responses.data || []).map(formResponseFromRow),
+    registrations: (registrations.data || []).map(registrationFromRow),
+    attendance: (attendance.data || []).map(attendanceFromRow),
+    qrs: (qrs.data || []).map(qrFromRow),
+    brands: (brands.data || []).map(brandFromRow),
+    products: (products.data || []).map(productFromRow),
+    eventProducts: (eventProducts.data || []).map(eventProductFromRow),
+    claims: (claims.data || []).map(claimFromRow),
+    sellerInvites: (sellerInvites.data || []).map((invite) => ({
+      id: String(invite.id),
+      seller_id: String(invite.seller_id),
+      email: String(invite.email),
+      login_url: String(invite.login_url),
+      temporary_password: String(invite.temporary_password),
+      created_at: String(invite.created_at),
+      status: String(invite.status || "queued") as SellerInvite["status"]
+    }))
+  };
+}
+
+async function ensureOrganization() {
+  const supabase = createServiceClient();
+  if (!supabase) return null;
+
+  const { error } = await supabase.from("organizations").upsert({
+    id: defaultOrganizationId,
+    name: "TAP Philippines"
+  });
+  if (error) throw error;
+
+  return supabase;
+}
 
 declare global {
   var tapDemoState: DemoState | undefined;
@@ -124,11 +429,11 @@ function ensureCreatorQr(registration: Registration, status?: CreatorQr["status"
 }
 
 export async function listEvents() {
-  return state().events;
+  return (await listDbEvents()) || state().events;
 }
 
 export async function listSellerEvents() {
-  const s = state();
+  const s = (await loadDbState()) || state();
   return s.eventSellers.map((eventSeller) => ({
     event: s.events.find((event) => event.id === eventSeller.event_id) || demoEvent,
     eventSeller
@@ -136,16 +441,115 @@ export async function listSellerEvents() {
 }
 
 export async function getEventBySlug(slug: string) {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("events")
+      .select(
+        eventSelect
+      )
+      .eq("event_slug", slug)
+      .maybeSingle();
+    if (!error && data) return eventFromRow(data);
+    if (error) console.error("Failed to load Supabase event by slug", error);
+  }
+
   return state().events.find((event) => event.event_slug === slug) || null;
 }
 
 export async function getEventById(id: string) {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("events")
+      .select(
+        eventSelect
+      )
+      .eq("id", id)
+      .maybeSingle();
+    if (!error && data) return eventFromRow(data);
+    if (error) console.error("Failed to load Supabase event by id", error);
+  }
+
   return state().events.find((event) => event.id === id) || null;
 }
 
 export async function getPublishedForm(eventId: string) {
   const event = await getEventById(eventId);
   if (!event) return null;
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: existingForm, error: formError } = await supabase
+      .from("event_forms")
+      .select("id,active_version_id")
+      .eq("event_id", eventId)
+      .maybeSingle();
+    if (formError) throw formError;
+
+    let formId = existingForm?.id;
+    let versionId = existingForm?.active_version_id;
+
+    if (!formId) {
+      const { data: form, error } = await supabase.from("event_forms").insert({ event_id: eventId }).select("id").single();
+      if (error) throw error;
+      formId = form.id;
+    }
+
+    if (!versionId) {
+      const { data: version, error } = await supabase
+        .from("event_form_versions")
+        .insert({
+          form_id: formId,
+          version_number: 1,
+          status: "published",
+          published_at: new Date().toISOString()
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      versionId = version.id;
+
+      const { error: fieldsError } = await supabase.from("event_form_fields").insert(
+        demoForm.fields.map((field) => ({
+          form_version_id: versionId,
+          label: field.label,
+          field_key: field.id,
+          field_type: field.field_type,
+          required: field.required,
+          options: field.options || [],
+          sort_order: field.sort_order
+        }))
+      );
+      if (fieldsError) throw fieldsError;
+
+      const { error: updateError } = await supabase.from("event_forms").update({ active_version_id: versionId }).eq("id", formId);
+      if (updateError) throw updateError;
+    }
+
+    const { data: fields, error: fieldsError } = await supabase
+      .from("event_form_fields")
+      .select("label,field_key,field_type,required,options,sort_order")
+      .eq("form_version_id", versionId)
+      .order("sort_order");
+    if (fieldsError) throw fieldsError;
+
+    return {
+      id: String(versionId),
+      event_id: eventId,
+      version_number: 1,
+      status: "published",
+      published_at: new Date().toISOString(),
+      fields: fields.map((field) => ({
+        id: String(field.field_key),
+        label: String(field.label),
+        field_type: String(field.field_type) as FormField["field_type"],
+        required: Boolean(field.required),
+        options: Array.isArray(field.options) ? field.options.map(String) : [],
+        sort_order: Number(field.sort_order)
+      }))
+    } satisfies FormVersion;
+  }
+
   return {
     ...demoForm,
     id: `formv_${eventId}_1`,
@@ -172,9 +576,9 @@ export async function createEvent(formData: FormData, posterUrl?: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 56);
-  const id = uid("evt");
+  const id = crypto.randomUUID();
   const slugCandidate = `${slugBase}-${eventDate}`.replace(/[^a-z0-9-]+/g, "-");
-  const existingSlugs = new Set(state().events.map((event) => event.event_slug));
+  const existingSlugs = new Set((await listEvents()).map((event) => event.event_slug));
   let eventSlug = slugCandidate;
   let suffix = 2;
   while (existingSlugs.has(eventSlug)) {
@@ -201,15 +605,61 @@ export async function createEvent(formData: FormData, posterUrl?: string) {
     status: "published"
   };
 
+  const supabase = await ensureOrganization();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("events")
+      .insert({
+        id: event.id,
+        organization_id: defaultOrganizationId,
+        event_name: event.event_name,
+        event_slug: event.event_slug,
+        description: event.description,
+        venue: event.venue,
+        address: event.address,
+        event_date: event.event_date,
+        start_time: event.start_time,
+        end_time: event.end_time,
+        registration_start: event.registration_start,
+        registration_end: event.registration_end,
+        maximum_creator_capacity: event.maximum_creator_capacity,
+        poster_url: event.poster_url,
+        status: event.status
+      })
+      .select(
+        eventSelect
+      )
+      .single();
+
+    if (error) return { ok: false, message: error.message };
+    return { ok: true, message: "Event created.", event: eventFromRow(data) };
+  }
+
   state().events.unshift(event);
   return { ok: true, message: "Event created.", event };
 }
 
 export async function updateEventBanner(eventId: string, posterUrl: string) {
-  const event = state().events.find((item) => item.id === eventId);
-  if (!event) return { ok: false, message: "Event not found." };
   if (!posterUrl) return { ok: false, message: "Banner image is required." };
 
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("events")
+      .update({ poster_url: posterUrl, updated_at: new Date().toISOString() })
+      .eq("id", eventId)
+      .select(
+        eventSelect
+      )
+      .maybeSingle();
+
+    if (error) return { ok: false, message: error.message };
+    if (!data) return { ok: false, message: "Event not found." };
+    return { ok: true, message: "Event banner updated.", event: eventFromRow(data) };
+  }
+
+  const event = state().events.find((item) => item.id === eventId);
+  if (!event) return { ok: false, message: "Event not found." };
   event.poster_url = posterUrl;
   return { ok: true, message: "Event banner updated.", event };
 }
@@ -222,7 +672,7 @@ function parseLines(value: FormDataEntryValue | null) {
 }
 
 export async function listEventSellerRows(eventId: string) {
-  const s = state();
+  const s = (await loadDbState()) || state();
   return s.eventSellers
     .filter((eventSeller) => eventSeller.event_id === eventId)
     .map((eventSeller) => {
@@ -240,7 +690,6 @@ export async function listEventSellerRows(eventId: string) {
 }
 
 export async function addEventSeller(formData: FormData, logoUrl?: string) {
-  const s = state();
   const eventId = String(formData.get("event_id") || "");
   const sellerName = String(formData.get("seller_name") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
@@ -255,6 +704,109 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
   if (!eventId || !sellerName || !email || !boothNumber || !password) {
     return { ok: false, message: "Seller name, email, password, event, and booth number are required." };
   }
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    if (!(await getEventById(eventId))) return { ok: false, message: "Event not found." };
+
+    const { data: boothConflict, error: boothError } = await supabase
+      .from("event_sellers")
+      .select("id")
+      .eq("event_id", eventId)
+      .ilike("booth_number", boothNumber)
+      .limit(1);
+    if (boothError) return { ok: false, message: boothError.message };
+    if (boothConflict?.length) return { ok: false, message: "That booth number is already assigned for this event." };
+
+    const { data: seller, error: sellerError } = await supabase
+      .from("sellers")
+      .insert({
+        organization_id: defaultOrganizationId,
+        company_name: sellerName,
+        contact_name: sellerName,
+        email,
+        phone: String(formData.get("phone") || "").trim(),
+        logo_url: logoUrl,
+        status: "active"
+      })
+      .select("id,company_name,contact_name,email,phone,logo_url,status")
+      .single();
+    if (sellerError) return { ok: false, message: sellerError.message };
+
+    const { error: eventSellerError } = await supabase.from("event_sellers").insert({
+      event_id: eventId,
+      seller_id: seller.id,
+      booth_name: boothName,
+      booth_number: boothNumber,
+      status: "active"
+    });
+    if (eventSellerError) return { ok: false, message: eventSellerError.message };
+
+    const brandNames = brandLines.length ? brandLines : [`${sellerName} Brand`];
+    const { data: dbBrands, error: brandError } = await supabase
+      .from("brands")
+      .insert(
+        brandNames.map((brandName) => ({
+          seller_id: seller.id,
+          brand_name: brandName,
+          logo_url: logoUrl,
+          description: "",
+          status: "active"
+        }))
+      )
+      .select("id,seller_id,brand_name,logo_url,description,status");
+    if (brandError) return { ok: false, message: brandError.message };
+
+    const brandByName = new Map((dbBrands || []).map((brand) => [String(brand.brand_name).toLowerCase(), brand]));
+    const defaultBrand = dbBrands?.[0];
+    for (let index = 0; index < productNames.length; index += 1) {
+      const productName = productNames[index];
+      const brandName = productBrands[index];
+      const brand = brandName ? brandByName.get(brandName.toLowerCase()) || defaultBrand : defaultBrand;
+      const quantity = productQuantities[index];
+      if (!productName || !brand) continue;
+
+      const sampleInventory = Number.isFinite(quantity) && quantity > 0 ? quantity : 50;
+      const { data: product, error: productError } = await supabase
+        .from("products")
+        .insert({
+          brand_id: brand.id,
+          product_name: productName,
+          sku: "",
+          description: "",
+          sample_inventory: sampleInventory,
+          max_claims_per_creator: 1,
+          status: "active"
+        })
+        .select("id")
+        .single();
+      if (productError) return { ok: false, message: productError.message };
+
+      const { error: eventProductError } = await supabase.from("event_products").insert({
+        event_id: eventId,
+        product_id: product.id,
+        available_quantity: sampleInventory,
+        max_claims_per_creator: 1,
+        status: "active"
+      });
+      if (eventProductError) return { ok: false, message: eventProductError.message };
+    }
+
+    const invite: SellerInvite = {
+      id: crypto.randomUUID(),
+      seller_id: seller.id,
+      email,
+      login_url: `${siteUrl()}/seller`,
+      temporary_password: password,
+      created_at: new Date().toISOString(),
+      status: "queued"
+    };
+    await supabase.from("seller_invites").insert(invite);
+
+    return { ok: true, message: "Seller added and login email queued.", seller: sellerFromRow(seller), invite };
+  }
+
+  const s = state();
   if (!s.events.some((event) => event.id === eventId)) {
     return { ok: false, message: "Event not found." };
   }
@@ -342,12 +894,32 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
 }
 
 export async function addBrand(formData: FormData) {
-  const s = state();
   const brandName = String(formData.get("brand_name") || "").trim();
   const description = String(formData.get("description") || "").trim();
 
   if (!brandName) return { ok: false, message: "Brand name is required." };
 
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: seller } = await supabase.from("sellers").select("id").order("created_at", { ascending: true }).limit(1).maybeSingle();
+    if (!seller) return { ok: false, message: "Seller not found." };
+
+    const { data: brand, error } = await supabase
+      .from("brands")
+      .insert({
+        seller_id: seller.id,
+        brand_name: brandName,
+        description,
+        logo_url: String(formData.get("logo_url") || "").trim() || null,
+        status: "active"
+      })
+      .select("id,seller_id,brand_name,logo_url,description,status")
+      .single();
+    if (error) return { ok: false, message: error.message };
+    return { ok: true, message: "Brand added.", brand: brandFromRow(brand) };
+  }
+
+  const s = state();
   const brand: Brand = {
     id: uid("bra"),
     seller_id: demoSeller.id,
@@ -362,13 +934,57 @@ export async function addBrand(formData: FormData) {
 }
 
 export async function addProduct(formData: FormData) {
-  const s = state();
   const brandId = String(formData.get("brand_id") || "");
   const productName = String(formData.get("product_name") || "").trim();
   const inventory = Number(formData.get("sample_inventory") || 0);
   const maxClaims = Number(formData.get("max_claims_per_creator") || 1);
 
   if (!brandId || !productName) return { ok: false, message: "Brand and product name are required." };
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: brand, error: brandError } = await supabase.from("brands").select("id").eq("id", brandId).maybeSingle();
+    if (brandError) return { ok: false, message: brandError.message };
+    if (!brand) return { ok: false, message: "Brand not found." };
+
+    const sampleInventory = Number.isFinite(inventory) && inventory >= 0 ? inventory : 0;
+    const maxClaims = Number(formData.get("max_claims_per_creator") || 1);
+    const maxClaimsPerCreator = Number.isFinite(maxClaims) && maxClaims > 0 ? maxClaims : 1;
+    const { data: product, error: productError } = await supabase
+      .from("products")
+      .insert({
+        brand_id: brand.id,
+        product_name: productName,
+        sku: String(formData.get("sku") || "").trim(),
+        image_url: String(formData.get("image_url") || "").trim() || null,
+        description: String(formData.get("description") || "").trim(),
+        sample_inventory: sampleInventory,
+        max_claims_per_creator: maxClaimsPerCreator,
+        status: "active"
+      })
+      .select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status")
+      .single();
+    if (productError) return { ok: false, message: productError.message };
+
+    const { data: events, error: eventsError } = await supabase.from("events").select("id");
+    if (eventsError) return { ok: false, message: eventsError.message };
+    if (events?.length) {
+      const { error: eventProductsError } = await supabase.from("event_products").insert(
+        events.map((event) => ({
+          event_id: event.id,
+          product_id: product.id,
+          available_quantity: sampleInventory,
+          max_claims_per_creator: maxClaimsPerCreator,
+          status: "active"
+        }))
+      );
+      if (eventProductsError) return { ok: false, message: eventProductsError.message };
+    }
+
+    return { ok: true, message: "Product added.", product: productFromRow(product) };
+  }
+
+  const s = state();
   const brand = s.brands.find((item) => item.id === brandId);
   if (!brand) return { ok: false, message: "Brand not found." };
 
@@ -400,7 +1016,7 @@ export async function addProduct(formData: FormData) {
 }
 
 export async function getAdminOverview() {
-  const s = state();
+  const s = (await loadDbState()) || state();
   const approved = s.registrations.filter((registration) => registration.registration_status === "approved").length;
   const checkedIn = s.attendance.filter((attendance) => attendance.status === "checked_in").length;
   const samplesIssued = s.claims
@@ -423,7 +1039,7 @@ export async function getAdminOverview() {
 
 export async function listRegistrations(eventId?: string, query = ""): Promise<RegistrationRow[]> {
   const needle = query.trim().toLowerCase();
-  const s = state();
+  const s = (await loadDbState()) || state();
 
   return s.registrations
     .filter((registration) => !eventId || registration.event_id === eventId)
@@ -454,7 +1070,7 @@ export async function getRegistrationDetail(registrationId: string) {
 
 export async function listAttendedCreators(query = "") {
   const needle = query.trim().toLowerCase();
-  const s = state();
+  const s = (await loadDbState()) || state();
 
   return s.attendance
     .filter((attendance) => attendance.status === "checked_in")
@@ -474,7 +1090,7 @@ export async function listAttendedCreators(query = "") {
 }
 
 export async function getCreatorDetail(creatorId: string) {
-  const s = state();
+  const s = (await loadDbState()) || state();
   const creator = s.creators.find((item) => item.id === creatorId);
   if (!creator) return null;
 
@@ -515,9 +1131,122 @@ export async function submitRegistration(slug: string, formData: FormData) {
     }
   }
 
-  const s = state();
   const mobile = String(answers.mobile || "");
   const email = String(answers.email || "");
+
+  const supabase = await ensureOrganization();
+  if (supabase) {
+    let creator = null as { id: string } | null;
+    if (email) {
+      const { data, error } = await supabase
+        .from("creators")
+        .select("id")
+        .eq("organization_id", defaultOrganizationId)
+        .ilike("email", email)
+        .maybeSingle();
+      if (error) return { ok: false, message: error.message };
+      creator = data;
+    }
+    if (!creator && mobile) {
+      const { data, error } = await supabase
+        .from("creators")
+        .select("id")
+        .eq("organization_id", defaultOrganizationId)
+        .eq("mobile", mobile)
+        .maybeSingle();
+      if (error) return { ok: false, message: error.message };
+      creator = data;
+    }
+
+    if (!creator) {
+      const { data, error } = await supabase
+        .from("creators")
+        .insert({
+          organization_id: defaultOrganizationId,
+          full_name: String(answers.full_name || ""),
+          tiktok_username: String(answers.tiktok_username || "").replace(/^@/, ""),
+          tiktok_profile_url: String(answers.tiktok_profile_url || ""),
+          email,
+          mobile,
+          location: String(answers.location || ""),
+          follower_count: Number(answers.follower_count || 0),
+          gmv_max_total: Number(answers.gmv_max_total || 0),
+          creator_category: String(answers.creator_category || ""),
+          content_categories: String(answers.content_categories || "")
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
+          affiliate_experience: String(answers.affiliate_experience || "")
+        })
+        .select("id")
+        .single();
+      if (error) return { ok: false, message: error.message };
+      creator = data;
+    }
+
+    const { data: existing } = await supabase
+      .from("event_registrations")
+      .select("id")
+      .eq("event_id", event.id)
+      .eq("creator_id", creator.id)
+      .maybeSingle();
+    if (existing) {
+      const { data: qr, error: qrError } = await supabase
+        .from("creator_event_qr")
+        .select("qr_token")
+        .eq("registration_id", existing.id)
+        .maybeSingle();
+      if (qrError) return { ok: false, message: qrError.message };
+      return { ok: true, message: "Registration already received.", registrationId: existing.id, qrToken: qr?.qr_token };
+    }
+
+    const submittedAt = new Date().toISOString();
+    const { data: response, error: responseError } = await supabase
+      .from("event_form_responses")
+      .insert({
+        event_id: event.id,
+        creator_id: creator.id,
+        form_version_id: form.id,
+        field_snapshot: form.fields,
+        answers,
+        submitted_at: submittedAt
+      })
+      .select("id")
+      .single();
+    if (responseError) return { ok: false, message: responseError.message };
+
+    const { data: registration, error: registrationError } = await supabase
+      .from("event_registrations")
+      .insert({
+        event_id: event.id,
+        creator_id: creator.id,
+        form_response_id: response.id,
+        registration_status: "pending",
+        registered_at: submittedAt
+      })
+      .select("id")
+      .single();
+    if (registrationError) return { ok: false, message: registrationError.message };
+
+    const token = `tap_${crypto.randomUUID().replaceAll("-", "")}`;
+    const { data: qr, error: qrError } = await supabase
+      .from("creator_event_qr")
+      .insert({
+        event_id: event.id,
+        creator_id: creator.id,
+        registration_id: registration.id,
+        qr_token: token,
+        qr_url: `${siteUrl()}/qr/${token}`,
+        status: "pending_approval"
+      })
+      .select("qr_token")
+      .single();
+    if (qrError) return { ok: false, message: qrError.message };
+
+    return { ok: true, message: "Registration received.", registrationId: registration.id, qrToken: qr.qr_token };
+  }
+
+  const s = state();
   let creator = s.creators.find((item) => item.mobile === mobile || item.email.toLowerCase() === email.toLowerCase());
 
   if (!creator) {
@@ -573,6 +1302,31 @@ export async function submitRegistration(slug: string, formData: FormData) {
 }
 
 export async function setRegistrationStatus(registrationId: string, status: Registration["registration_status"]) {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: registration, error } = await supabase
+      .from("event_registrations")
+      .update({
+        registration_status: status,
+        approved_at: status === "approved" ? new Date().toISOString() : null
+      })
+      .eq("id", registrationId)
+      .select("id")
+      .maybeSingle();
+    if (error) return { ok: false, message: error.message };
+    if (!registration) return { ok: false, message: "Registration not found." };
+
+    const qrStatus =
+      status === "approved"
+        ? "approved_not_checked_in"
+        : status === "rejected" || status === "cancelled"
+          ? "revoked"
+          : "pending_approval";
+    const { error: qrError } = await supabase.from("creator_event_qr").update({ status: qrStatus }).eq("registration_id", registrationId);
+    if (qrError) return { ok: false, message: qrError.message };
+    return { ok: true, message: `Registration ${status}.` };
+  }
+
   const registration = state().registrations.find((item) => item.id === registrationId);
   if (!registration) return { ok: false, message: "Registration not found." };
   registration.registration_status = status;
@@ -588,6 +1342,45 @@ export async function setRegistrationStatus(registrationId: string, status: Regi
 }
 
 export async function checkInCreator(registrationId: string) {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: registration, error } = await supabase
+      .from("event_registrations")
+      .select("id,event_id,creator_id,registration_status")
+      .eq("id", registrationId)
+      .maybeSingle();
+    if (error) return { ok: false, message: error.message };
+    if (!registration) return { ok: false, message: "Registration not found." };
+    if (registration.registration_status !== "approved") return { ok: false, message: "Only approved creators can be checked in." };
+
+    const checkedInAt = new Date().toISOString();
+    const { data: attendance, error: attendanceError } = await supabase
+      .from("event_attendance")
+      .upsert(
+        {
+          event_id: registration.event_id,
+          creator_id: registration.creator_id,
+          registration_id: registration.id,
+          status: "checked_in",
+          checked_in_at: checkedInAt
+        },
+        { onConflict: "registration_id" }
+      )
+      .select("id")
+      .single();
+    if (attendanceError) return { ok: false, message: attendanceError.message };
+
+    const { data: qr, error: qrError } = await supabase
+      .from("creator_event_qr")
+      .update({ attendance_id: attendance.id, status: "active" })
+      .eq("registration_id", registration.id)
+      .select("qr_token")
+      .maybeSingle();
+    if (qrError) return { ok: false, message: qrError.message };
+
+    return { ok: true, message: "Creator checked in.", qrToken: qr?.qr_token };
+  }
+
   const s = state();
   const registration = s.registrations.find((item) => item.id === registrationId);
   if (!registration) return { ok: false, message: "Registration not found." };
@@ -614,7 +1407,7 @@ export async function checkInCreator(registrationId: string) {
 }
 
 export async function validateQrForSeller(eventId: string, token: string): Promise<QrValidation> {
-  const s = state();
+  const s = (await loadDbState()) || state();
   const qr = s.qrs.find((item) => item.qr_token === token);
   if (!qr) return { ok: false, code: "not_found", message: "QR token was not found." };
 
@@ -656,6 +1449,69 @@ export async function validateQrForSeller(eventId: string, token: string): Promi
 }
 
 export async function issueSampleClaim(eventId: string, token: string, productId: string, quantity: number) {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const verified = await validateQrForSeller(eventId, token);
+    if (!verified.ok) return { ok: false, code: verified.code, message: verified.message };
+    const s = (await loadDbState()) || state();
+    const eventProduct = s.eventProducts.find((item) => item.event_id === eventId && item.product_id === productId && item.status === "active");
+    const product = s.products.find((item) => item.id === productId);
+    const brand = product ? s.brands.find((item) => item.id === product.brand_id) : null;
+    if (!eventProduct || !product || !brand) return { ok: false, code: "product_unavailable", message: "Product is unavailable for this event." };
+
+    const duplicate = s.claims.find(
+      (claim) =>
+        claim.event_id === eventId &&
+        claim.creator_id === verified.data.creator.id &&
+        claim.product_id === productId &&
+        claim.status === "claimed"
+    );
+    if (duplicate) return { ok: false, code: "already_claimed", message: "Creator has already claimed this product.", claim: duplicate };
+    if (quantity > eventProduct.available_quantity) return { ok: false, code: "out_of_stock", message: "Not enough inventory remaining." };
+    if (quantity > eventProduct.max_claims_per_creator) return { ok: false, code: "limit_exceeded", message: "Requested quantity exceeds the claim limit." };
+
+    const { data: updatedInventory, error: inventoryError } = await supabase
+      .from("event_products")
+      .update({ available_quantity: eventProduct.available_quantity - quantity })
+      .eq("id", eventProduct.id)
+      .gte("available_quantity", quantity)
+      .select("id")
+      .maybeSingle();
+    if (inventoryError) return { ok: false, code: "inventory_error", message: inventoryError.message };
+    if (!updatedInventory) return { ok: false, code: "out_of_stock", message: "Not enough inventory remaining." };
+
+    const { data: scan } = await supabase
+      .from("qr_scans")
+      .insert({
+        event_id: eventId,
+        seller_id: brand.seller_id,
+        creator_id: verified.data.creator.id,
+        qr_id: verified.data.qr.id,
+        result: "valid"
+      })
+      .select("id")
+      .single();
+
+    const { data: claim, error: claimError } = await supabase
+      .from("sample_claims")
+      .insert({
+        event_id: eventId,
+        creator_id: verified.data.creator.id,
+        seller_id: brand.seller_id,
+        brand_id: brand.id,
+        product_id: product.id,
+        quantity,
+        qr_scan_id: scan?.id,
+        status: "claimed"
+      })
+      .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
+      .single();
+    if (claimError) return { ok: false, code: "already_claimed", message: "Creator has already claimed this product." };
+
+    await supabase.from("creator_event_qr").update({ last_scanned_at: new Date().toISOString() }).eq("id", verified.data.qr.id);
+    return { ok: true, code: "claimed", message: "Sample claimed.", claim: claimFromRow(claim) };
+  }
+
   const s = state();
   const verified = await validateQrForSeller(eventId, token);
   if (!verified.ok) return { ok: false, code: verified.code, message: verified.message };
@@ -698,14 +1554,14 @@ export async function issueSampleClaim(eventId: string, token: string, productId
 }
 
 export async function listSellerDashboard() {
-  const s = state();
+  const s = (await loadDbState()) || state();
   const claims = s.claims.filter((claim) => claim.status === "claimed");
   const uniqueCreators = new Set(claims.map((claim) => claim.creator_id));
   const seller = s.sellers[0] || demoSeller;
   const eventSeller = s.eventSellers.find((item) => item.seller_id === seller.id) || demoEventSeller;
 
   return {
-    event: demoEvent,
+    event: s.events.find((event) => event.id === eventSeller.event_id) || s.events[0] || demoEvent,
     seller,
     eventSeller,
     brands: s.brands,
@@ -719,10 +1575,10 @@ export async function listSellerDashboard() {
 }
 
 export async function getClaimRows() {
-  const s = state();
+  const s = (await loadDbState()) || state();
   return s.claims.map((claim) => ({
     claim,
-    event: demoEvent,
+    event: s.events.find((event) => event.id === claim.event_id) || demoEvent,
     creator: s.creators.find((creator) => creator.id === claim.creator_id)!,
     brand: s.brands.find((brand) => brand.id === claim.brand_id)!,
     product: s.products.find((product) => product.id === claim.product_id)!
@@ -746,7 +1602,7 @@ export async function listSellerProductRows() {
 }
 
 export async function getQrPage(token: string) {
-  const s = state();
+  const s = (await loadDbState()) || state();
   const qr = s.qrs.find((item) => item.qr_token === token);
   if (!qr) return null;
   return {

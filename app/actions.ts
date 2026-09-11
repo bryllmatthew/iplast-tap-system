@@ -14,10 +14,10 @@ import {
   issueSampleClaim,
   setRegistrationStatus,
   submitRegistration,
-  validateSellerLogin,
   updateEventBanner
 } from "@/lib/repository";
-import { clearSession, setSession, verifyAdminLogin } from "@/lib/auth";
+import { ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, userHasRole } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 
 async function savePublicUpload(file: File) {
   const extension = path.extname(file.name) || ".jpg";
@@ -33,23 +33,27 @@ export async function loginAction(formData: FormData) {
   const username = String(formData.get("username") || "").trim();
   const password = String(formData.get("password") || "");
   const next = String(formData.get("next") || (role === "seller" ? "/seller" : "/admin"));
+  const expectedRole = role === "seller" ? "seller" : "admin";
+  const email = loginIdentifierToEmail(expectedRole, username);
 
-  if (role === "seller") {
-    const seller = await validateSellerLogin(username, password);
-    if (seller) {
-      await setSession({ role: "seller", username: seller.email, sellerId: seller.id });
-      redirect(next.startsWith("/seller") ? next : "/seller");
-    }
-  } else if (verifyAdminLogin(username, password)) {
-    await setSession({ role: "admin", username });
-    redirect(next.startsWith("/admin") ? next : "/admin");
+  if (expectedRole === "admin") {
+    await ensureDefaultAdminUser();
   }
 
-  redirect(`/login?role=${role === "seller" ? "seller" : "admin"}&next=${encodeURIComponent(next)}&message=${encodeURIComponent("Invalid login details.")}`);
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (!error && data.user && (await userHasRole(data.user.id, expectedRole))) {
+    redirect(expectedRole === "seller" ? (next.startsWith("/seller") ? next : "/seller") : next.startsWith("/admin") ? next : "/admin");
+  }
+
+  await supabase.auth.signOut();
+  redirect(`/login?role=${expectedRole}&next=${encodeURIComponent(next)}&message=${encodeURIComponent("Invalid login details.")}`);
 }
 
 export async function logoutAction() {
-  await clearSession();
+  const supabase = await createClient();
+  await supabase.auth.signOut();
   redirect("/login");
 }
 
@@ -164,6 +168,10 @@ export async function addEventSellerAction(formData: FormData) {
   }
 
   const result = await addEventSeller(formData, logoUrl);
+  const password = String(formData.get("password") || "").trim();
+  if (result.ok && result.seller && password) {
+    await ensureSellerAuthUser(result.seller, password);
+  }
   const params = new URLSearchParams({
     sellerMessage: result.message,
     sellerResult: result.ok ? "success" : "error"

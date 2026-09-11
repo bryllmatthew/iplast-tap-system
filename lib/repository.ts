@@ -31,8 +31,7 @@ import type {
   QrValidation,
   SampleClaim,
   Seller,
-  SellerInvite,
-  SellerLogin
+  SellerInvite
 } from "@/lib/types";
 
 type DemoState = {
@@ -49,7 +48,6 @@ type DemoState = {
   eventProducts: EventProduct[];
   claims: SampleClaim[];
   sellerInvites: SellerInvite[];
-  sellerLogins: SellerLogin[];
 };
 
 declare global {
@@ -71,14 +69,7 @@ function state(): DemoState {
       products: structuredClone(demoProducts),
       eventProducts: structuredClone(demoEventProducts),
       claims: structuredClone(demoClaims),
-      sellerInvites: [],
-      sellerLogins: [
-        {
-          seller_id: demoSeller.id,
-          email: demoSeller.email,
-          password: "SellerDemo123!"
-        }
-      ]
+      sellerInvites: []
     };
   }
 
@@ -99,15 +90,6 @@ function state(): DemoState {
   }
   if (!global.tapDemoState.sellerInvites) {
     global.tapDemoState.sellerInvites = [];
-  }
-  if (!global.tapDemoState.sellerLogins) {
-    global.tapDemoState.sellerLogins = [
-      {
-        seller_id: demoSeller.id,
-        email: demoSeller.email,
-        password: "SellerDemo123!"
-      }
-    ];
   }
 
   return global.tapDemoState;
@@ -356,20 +338,7 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
     status: "queued"
   };
   s.sellerInvites.unshift(invite);
-  s.sellerLogins.unshift({
-    seller_id: seller.id,
-    email,
-    password
-  });
-
   return { ok: true, message: "Seller added and login email queued.", seller, invite };
-}
-
-export async function validateSellerLogin(email: string, password: string) {
-  const s = state();
-  const login = s.sellerLogins.find((item) => item.email.toLowerCase() === email.toLowerCase() && item.password === password);
-  if (!login) return null;
-  return s.sellers.find((seller) => seller.id === login.seller_id) || null;
 }
 
 export async function addBrand(formData: FormData) {

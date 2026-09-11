@@ -140,12 +140,6 @@ export type SellerInvite = {
   status: "queued" | "sent";
 };
 
-export type SellerLogin = {
-  seller_id: string;
-  email: string;
-  password: string;
-};
-
 export type Brand = {
   id: string;
   seller_id: string;

@@ -14,8 +14,10 @@ import {
   issueSampleClaim,
   setRegistrationStatus,
   submitRegistration,
+  validateSellerLogin,
   updateEventBanner
 } from "@/lib/repository";
+import { clearSession, setSession, verifyAdminLogin } from "@/lib/auth";
 
 async function savePublicUpload(file: File) {
   const extension = path.extname(file.name) || ".jpg";
@@ -24,6 +26,31 @@ async function savePublicUpload(file: File) {
   await mkdir(uploadDir, { recursive: true });
   await writeFile(path.join(uploadDir, filename), Buffer.from(await file.arrayBuffer()));
   return `/uploads/${filename}`;
+}
+
+export async function loginAction(formData: FormData) {
+  const role = String(formData.get("role") || "admin");
+  const username = String(formData.get("username") || "").trim();
+  const password = String(formData.get("password") || "");
+  const next = String(formData.get("next") || (role === "seller" ? "/seller" : "/admin"));
+
+  if (role === "seller") {
+    const seller = await validateSellerLogin(username, password);
+    if (seller) {
+      await setSession({ role: "seller", username: seller.email, sellerId: seller.id });
+      redirect(next.startsWith("/seller") ? next : "/seller");
+    }
+  } else if (verifyAdminLogin(username, password)) {
+    await setSession({ role: "admin", username });
+    redirect(next.startsWith("/admin") ? next : "/admin");
+  }
+
+  redirect(`/login?role=${role === "seller" ? "seller" : "admin"}&next=${encodeURIComponent(next)}&message=${encodeURIComponent("Invalid login details.")}`);
+}
+
+export async function logoutAction() {
+  await clearSession();
+  redirect("/login");
 }
 
 export async function submitRegistrationAction(slug: string, formData: FormData) {

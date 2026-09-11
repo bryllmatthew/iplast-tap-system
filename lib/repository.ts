@@ -31,7 +31,8 @@ import type {
   QrValidation,
   SampleClaim,
   Seller,
-  SellerInvite
+  SellerInvite,
+  SellerLogin
 } from "@/lib/types";
 
 type DemoState = {
@@ -48,6 +49,7 @@ type DemoState = {
   eventProducts: EventProduct[];
   claims: SampleClaim[];
   sellerInvites: SellerInvite[];
+  sellerLogins: SellerLogin[];
 };
 
 declare global {
@@ -69,7 +71,14 @@ function state(): DemoState {
       products: structuredClone(demoProducts),
       eventProducts: structuredClone(demoEventProducts),
       claims: structuredClone(demoClaims),
-      sellerInvites: []
+      sellerInvites: [],
+      sellerLogins: [
+        {
+          seller_id: demoSeller.id,
+          email: demoSeller.email,
+          password: "SellerDemo123!"
+        }
+      ]
     };
   }
 
@@ -90,6 +99,15 @@ function state(): DemoState {
   }
   if (!global.tapDemoState.sellerInvites) {
     global.tapDemoState.sellerInvites = [];
+  }
+  if (!global.tapDemoState.sellerLogins) {
+    global.tapDemoState.sellerLogins = [
+      {
+        seller_id: demoSeller.id,
+        email: demoSeller.email,
+        password: "SellerDemo123!"
+      }
+    ];
   }
 
   return global.tapDemoState;
@@ -246,13 +264,14 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const boothNumber = String(formData.get("booth_number") || "").trim();
   const boothName = String(formData.get("booth_name") || sellerName).trim();
+  const password = String(formData.get("password") || "").trim();
   const brandLines = parseLines(formData.get("brands"));
   const productBrands = formData.getAll("product_brand").map((value) => String(value).trim());
   const productNames = formData.getAll("product_name").map((value) => String(value).trim());
   const productQuantities = formData.getAll("product_quantity").map((value) => Number(value || 0));
 
-  if (!eventId || !sellerName || !email || !boothNumber) {
-    return { ok: false, message: "Seller name, email, event, and booth number are required." };
+  if (!eventId || !sellerName || !email || !boothNumber || !password) {
+    return { ok: false, message: "Seller name, email, password, event, and booth number are required." };
   }
   if (!s.events.some((event) => event.id === eventId)) {
     return { ok: false, message: "Event not found." };
@@ -327,19 +346,30 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
     });
   }
 
-  const temporaryPassword = `TAP-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   const invite: SellerInvite = {
     id: uid("inv"),
     seller_id: seller.id,
     email,
     login_url: `${siteUrl()}/seller`,
-    temporary_password: temporaryPassword,
+    temporary_password: password,
     created_at: new Date().toISOString(),
     status: "queued"
   };
   s.sellerInvites.unshift(invite);
+  s.sellerLogins.unshift({
+    seller_id: seller.id,
+    email,
+    password
+  });
 
   return { ok: true, message: "Seller added and login email queued.", seller, invite };
+}
+
+export async function validateSellerLogin(email: string, password: string) {
+  const s = state();
+  const login = s.sellerLogins.find((item) => item.email.toLowerCase() === email.toLowerCase() && item.password === password);
+  if (!login) return null;
+  return s.sellers.find((seller) => seller.id === login.seller_id) || null;
 }
 
 export async function addBrand(formData: FormData) {

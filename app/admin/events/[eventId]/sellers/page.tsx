@@ -148,6 +148,10 @@ function AddSellerModal({ eventId }: { eventId: string }) {
               <input className="tap-input" name="email" required type="email" placeholder="seller@example.com" />
             </label>
             <label className="tap-label">
+              Seller Password
+              <input className="tap-input" name="password" required type="password" placeholder="Set seller password" />
+            </label>
+            <label className="tap-label">
               Phone
               <input className="tap-input" name="phone" placeholder="+63917..." />
             </label>

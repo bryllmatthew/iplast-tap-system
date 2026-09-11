@@ -18,6 +18,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <span className="grid size-9 place-items-center rounded-lg bg-ink text-sm text-white">TAP</span>
               <span className="hidden sm:inline">Matchmaking Event System</span>
             </Link>
+            <nav className="flex items-center gap-3 text-sm font-bold text-slate-600">
+              <Link href="/landing">Landing</Link>
+              <Link href="/events">Events</Link>
+            </nav>
           </div>
         </header>
         {children}

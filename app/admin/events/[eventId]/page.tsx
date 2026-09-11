@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeCheck, ClipboardList, QrCode, Store } from "lucide-react";
+import QRCode from "qrcode";
 
 import { updateEventBannerAction } from "@/app/actions";
 import { DeleteEventButton } from "@/components/DeleteEventButton";
+import { EventRegistrationQrActions } from "@/components/EventRegistrationQrActions";
+import { siteUrl } from "@/lib/env";
 import { number, shortDate } from "@/lib/format";
 import { getEventById, listRegistrations, listSellerDashboard } from "@/lib/repository";
 import { eventStatusClass } from "@/lib/status";
@@ -23,6 +26,8 @@ export default async function AdminEventHubPage({
   const sellerDashboard = await listSellerDashboard();
   const approved = registrations.filter((row) => row.registration.registration_status === "approved").length;
   const checkedIn = registrations.filter((row) => row.attendance?.status === "checked_in").length;
+  const registrationUrl = `${siteUrl()}/events/${event.event_slug}/register`;
+  const registrationQrImage = await QRCode.toDataURL(registrationUrl, { margin: 1, width: 420 });
 
   return (
     <section className="space-y-5">
@@ -74,6 +79,29 @@ export default async function AdminEventHubPage({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
+        <section className="tap-card p-5 md:col-span-2">
+          <div className="grid gap-5 lg:grid-cols-[260px_1fr] lg:items-center">
+            <div className="rounded-lg bg-white p-3 shadow-inner">
+              <img className="mx-auto size-56 max-w-full" src={registrationQrImage} alt="Event registration QR code" />
+            </div>
+            <div>
+              <p className="text-sm font-black uppercase text-cyan-700">Registration QR</p>
+              <h2 className="mt-2 text-xl font-black text-ink">Use this QR for Facebook posts</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                This QR sends creators directly to the registration form for this event.
+              </p>
+              <p className="mt-3 break-all rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-600">{registrationUrl}</p>
+              <div className="mt-4">
+                <EventRegistrationQrActions
+                  image={registrationQrImage}
+                  registrationUrl={registrationUrl}
+                  eventName={event.event_name}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
         <ActionCard
           title="Registrations"
           body="Review form submissions, TikTok URLs, QR status, and approval decisions."

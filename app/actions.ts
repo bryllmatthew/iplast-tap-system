@@ -169,6 +169,7 @@ export async function createEventAction(formData: FormData) {
   }
 
   revalidatePath("/");
+  revalidatePath("/vismincreatorsclub");
   revalidatePath("/events");
   revalidatePath("/admin/events");
   redirect(`/admin/events/${result.event.id}`);
@@ -196,6 +197,7 @@ export async function updateEventBannerAction(formData: FormData) {
   });
 
   revalidatePath("/");
+  revalidatePath("/vismincreatorsclub");
   revalidatePath("/events");
   if (result.event) {
     revalidatePath(`/events/${result.event.event_slug}`);
@@ -218,6 +220,7 @@ export async function deleteEventAction(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/landing");
+  revalidatePath("/vismincreatorsclub");
   revalidatePath("/events");
   revalidatePath("/admin");
   revalidatePath("/admin/events");

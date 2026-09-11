@@ -24,7 +24,7 @@ export default async function AdminDashboard() {
             <h1 className="mt-2 text-3xl font-black text-ink">{overview.event.event_name}</h1>
             <p className="mt-2 max-w-3xl text-slate-600">{overview.event.description}</p>
           </div>
-          <Link className="tap-button tap-button-primary h-max" href="/landing">
+          <Link className="tap-button tap-button-primary h-max" href="/vismincreatorsclub">
             View Public Page
           </Link>
         </div>

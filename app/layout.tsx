@@ -4,8 +4,8 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TAP Matchmaking Event System",
-  description: "Creator registration, onsite check-in, QR validation, and sample redemption for TAP events."
+  title: "VisMin Creators Club",
+  description: "Creator registration, onsite check-in, QR validation, and sample redemption for VisMin creator events."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -14,12 +14,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <header className="border-b border-slate-200/70 bg-white/85 backdrop-blur">
           <div className="tap-shell flex min-h-16 items-center justify-between gap-4">
-            <Link href="/" className="flex items-center gap-3 font-black text-ink">
-              <span className="grid size-9 place-items-center rounded-lg bg-ink text-sm text-white">TAP</span>
-              <span className="hidden sm:inline">Matchmaking Event System</span>
+            <Link href="/vismincreatorsclub" className="flex items-center gap-3 font-black text-ink">
+              <span className="grid size-9 place-items-center rounded-lg bg-ink text-sm text-white">VC</span>
+              <span className="hidden sm:inline">VisMin Creators Club</span>
             </Link>
             <nav className="flex items-center gap-3 text-sm font-bold text-slate-600">
-              <Link href="/landing">Landing</Link>
               <Link href="/events">Events</Link>
             </nav>
           </div>

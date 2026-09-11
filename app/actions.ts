@@ -4,6 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 
 import {
   addBrand,
@@ -17,11 +18,41 @@ import {
   updateEventBanner
 } from "@/lib/repository";
 import { ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, userHasRole } from "@/lib/auth";
+import { cleanEnv } from "@/lib/clean-env";
 import { createClient } from "@/lib/supabase/server";
 
 async function savePublicUpload(file: File) {
   const extension = path.extname(file.name) || ".jpg";
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${extension}`.replace(/[^a-zA-Z0-9._-]/g, "");
+  const url = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const key = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+  if (url && key) {
+    const supabase = createSupabaseAdmin(url, key, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+    const bucket = "tap-public-assets";
+    const objectPath = `uploads/${filename}`;
+    const bytes = Buffer.from(await file.arrayBuffer());
+
+    const { error: bucketError } = await supabase.storage.createBucket(bucket, { public: true });
+    if (bucketError && !/already exists/i.test(bucketError.message)) {
+      throw bucketError;
+    }
+
+    const { error: uploadError } = await supabase.storage.from(bucket).upload(objectPath, bytes, {
+      cacheControl: "31536000",
+      contentType: file.type || "application/octet-stream",
+      upsert: true
+    });
+    if (uploadError) throw uploadError;
+
+    return supabase.storage.from(bucket).getPublicUrl(objectPath).data.publicUrl;
+  }
+
   const uploadDir = path.join(process.cwd(), "public", "uploads");
   await mkdir(uploadDir, { recursive: true });
   await writeFile(path.join(uploadDir, filename), Buffer.from(await file.arrayBuffer()));
@@ -147,7 +178,13 @@ export async function updateEventBannerAction(formData: FormData) {
     redirect(`/admin/events/${eventId}?bannerMessage=${encodeURIComponent("Choose a banner image first.")}&bannerResult=error`);
   }
 
-  const posterUrl = await savePublicUpload(banner);
+  let posterUrl: string;
+  try {
+    posterUrl = await savePublicUpload(banner);
+  } catch (error) {
+    console.error("Banner upload failed", error);
+    redirect(`/admin/events/${eventId}?bannerMessage=${encodeURIComponent("Banner upload failed. Please try a smaller image or different file type.")}&bannerResult=error`);
+  }
   const result = await updateEventBanner(eventId, posterUrl);
   const params = new URLSearchParams({
     bannerMessage: result.message,

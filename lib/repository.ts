@@ -413,6 +413,10 @@ function unique(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 function mapById<T extends { id: string }>(rows: T[]) {
   return new Map(rows.map((row) => [row.id, row]));
 }
@@ -476,7 +480,7 @@ export async function getEventBySlug(slug: string) {
 
 export async function getEventById(id: string) {
   const supabase = createServiceClient();
-  if (supabase) {
+  if (supabase && isUuid(id)) {
     const { data, error } = await supabase
       .from("events")
       .select(

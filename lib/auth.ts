@@ -68,11 +68,14 @@ export async function ensureDefaultAdminUser() {
     full_name: "TAP Admin",
     email: adminEmail
   });
-  await admin.from("organization_users").upsert({
-    organization_id: defaultOrganizationId,
-    user_id: user.id,
-    role: "super_admin"
-  });
+  await admin.from("organization_users").upsert(
+    {
+      organization_id: defaultOrganizationId,
+      user_id: user.id,
+      role: "super_admin"
+    },
+    { onConflict: "organization_id,user_id,role" }
+  );
 
   return user;
 }
@@ -106,11 +109,14 @@ export async function ensureSellerAuthUser(seller: Seller, password: string) {
 
   if (sellerError) throw sellerError;
 
-  await admin.from("seller_users").upsert({
-    seller_id: dbSeller.id,
-    user_id: user.id,
-    role: "seller_admin"
-  });
+  await admin.from("seller_users").upsert(
+    {
+      seller_id: dbSeller.id,
+      user_id: user.id,
+      role: "seller_admin"
+    },
+    { onConflict: "seller_id,user_id" }
+  );
   await admin.from("event_sellers").upsert(
     {
       event_id: defaultEventId,

@@ -35,19 +35,26 @@ export async function loginAction(formData: FormData) {
   const next = String(formData.get("next") || (role === "seller" ? "/seller" : "/admin"));
   const expectedRole = role === "seller" ? "seller" : "admin";
   const email = loginIdentifierToEmail(expectedRole, username);
+  let redirectTo = "";
 
-  if (expectedRole === "admin") {
-    await ensureDefaultAdminUser();
+  try {
+    if (expectedRole === "admin") {
+      await ensureDefaultAdminUser();
+    }
+
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (!error && data.user && (await userHasRole(data.user.id, expectedRole))) {
+      redirectTo = expectedRole === "seller" ? (next.startsWith("/seller") ? next : "/seller") : next.startsWith("/admin") ? next : "/admin";
+    } else {
+      await supabase.auth.signOut();
+    }
+  } catch (error) {
+    console.error("Login failed", error);
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (!error && data.user && (await userHasRole(data.user.id, expectedRole))) {
-    redirect(expectedRole === "seller" ? (next.startsWith("/seller") ? next : "/seller") : next.startsWith("/admin") ? next : "/admin");
-  }
-
-  await supabase.auth.signOut();
+  if (redirectTo) redirect(redirectTo);
   redirect(`/login?role=${expectedRole}&next=${encodeURIComponent(next)}&message=${encodeURIComponent("Invalid login details.")}`);
 }
 

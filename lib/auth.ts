@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/server";
+import { cleanEnv } from "@/lib/clean-env";
 import type { Role, Seller } from "@/lib/types";
 
 const adminUsername = "TAPAdmin";
@@ -13,8 +14,8 @@ const defaultOrganizationId = "00000000-0000-0000-0000-000000000001";
 const defaultEventId = "10000000-0000-0000-0000-000000000001";
 
 function createServiceClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const key = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   if (!url || !key) {
     throw new Error("Missing Supabase service environment variables.");

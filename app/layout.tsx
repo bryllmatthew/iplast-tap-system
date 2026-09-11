@@ -14,9 +14,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <header className="border-b border-slate-200/70 bg-white/85 backdrop-blur">
           <div className="tap-shell flex min-h-16 items-center justify-between gap-4">
-            <Link href="/vismincreatorsclub" className="flex items-center gap-3 font-black text-ink">
-              <span className="grid size-9 place-items-center rounded-lg bg-ink text-sm text-white">VC</span>
-              <span className="hidden sm:inline">VisMin Creators Club</span>
+            <Link href="/vismincreatorsclub" className="font-black text-ink">
+              VisMin Creators Club
             </Link>
             <nav className="flex items-center gap-3 text-sm font-bold text-slate-600">
               <Link href="/events">Events</Link>

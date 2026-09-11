@@ -166,7 +166,7 @@ create table public.creator_event_qr (
   creator_id uuid not null references public.creators(id) on delete cascade,
   registration_id uuid not null references public.event_registrations(id) on delete cascade,
   attendance_id uuid references public.event_attendance(id) on delete set null,
-  qr_token text not null unique default encode(gen_random_bytes(32), 'hex'),
+  qr_token text not null unique default encode(extensions.gen_random_bytes(32), 'hex'),
   qr_url text,
   status public.qr_status not null default 'pending_approval',
   generated_at timestamptz not null default now(),

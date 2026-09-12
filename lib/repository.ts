@@ -851,6 +851,11 @@ export async function listSellerDatabaseRows(query = "") {
     });
 }
 
+export async function getSellerDetail(sellerId: string) {
+  const rows = await listSellerDatabaseRows();
+  return rows.find((row) => row.seller.id === sellerId) || null;
+}
+
 export async function addEventSeller(formData: FormData, logoUrl?: string) {
   const eventId = String(formData.get("event_id") || "");
   const sellerName = String(formData.get("seller_name") || "").trim();
@@ -1175,6 +1180,69 @@ export async function addProduct(formData: FormData) {
   }
 
   return { ok: true, message: "Product added.", product };
+}
+
+export async function updateProduct(formData: FormData) {
+  const productId = String(formData.get("product_id") || "");
+  const productName = String(formData.get("product_name") || "").trim();
+  const sku = String(formData.get("sku") || "").trim();
+  const description = String(formData.get("description") || "").trim();
+  const sampleInventory = Number(formData.get("sample_inventory") || 0);
+  const availableQuantity = Number(formData.get("available_quantity") || 0);
+  const maxClaims = Number(formData.get("max_claims_per_creator") || 1);
+
+  if (!productId || !productName) return { ok: false, message: "Product name is required." };
+
+  const inventory = Number.isFinite(sampleInventory) && sampleInventory >= 0 ? sampleInventory : 0;
+  const available = Number.isFinite(availableQuantity) && availableQuantity >= 0 ? availableQuantity : 0;
+  const maxClaimsPerCreator = Number.isFinite(maxClaims) && maxClaims > 0 ? maxClaims : 1;
+  const supabase = createServiceClient();
+
+  if (supabase) {
+    const { data: product, error } = await supabase
+      .from("products")
+      .update({
+        product_name: productName,
+        sku,
+        description,
+        sample_inventory: inventory,
+        max_claims_per_creator: maxClaimsPerCreator
+      })
+      .eq("id", productId)
+      .select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status")
+      .maybeSingle();
+    if (error) return { ok: false, message: error.message };
+    if (!product) return { ok: false, message: "Product not found." };
+
+    const { error: eventProductError } = await supabase
+      .from("event_products")
+      .update({
+        available_quantity: available,
+        max_claims_per_creator: maxClaimsPerCreator
+      })
+      .eq("product_id", productId);
+    if (eventProductError) return { ok: false, message: eventProductError.message };
+
+    return { ok: true, message: "Product updated.", product: productFromRow(product) };
+  }
+
+  const s = state();
+  const product = s.products.find((item) => item.id === productId);
+  if (!product) return { ok: false, message: "Product not found." };
+
+  product.product_name = productName;
+  product.sku = sku;
+  product.description = description;
+  product.sample_inventory = inventory;
+  product.max_claims_per_creator = maxClaimsPerCreator;
+  s.eventProducts
+    .filter((item) => item.product_id === productId)
+    .forEach((item) => {
+      item.available_quantity = available;
+      item.max_claims_per_creator = maxClaimsPerCreator;
+    });
+
+  return { ok: true, message: "Product updated.", product };
 }
 
 export async function getAdminOverview() {
@@ -2004,7 +2072,7 @@ export async function issueSampleClaim(eventId: string, token: string, productId
   return { ok: true, code: "claimed", message: "Sample claimed.", claim };
 }
 
-export async function listSellerDashboard() {
+export async function listSellerDashboard(eventId?: string) {
   const supabase = createServiceClient();
   if (supabase) {
     const { data: sellerRow, error: sellerError } = await supabase
@@ -2038,6 +2106,23 @@ export async function listSellerDashboard() {
     const brands = (brandRows || []).map(brandFromRow);
     const brandIds = unique(brands.map((brand) => brand.id));
 
+    const eventSellerQuery = supabase
+      .from("event_sellers")
+      .select("id,event_id,seller_id,booth_name,booth_number,status")
+      .eq("seller_id", seller.id)
+      .order("created_at", { ascending: false });
+    if (eventId) eventSellerQuery.eq("event_id", eventId);
+
+    const claimsQuery = supabase
+      .from("sample_claims")
+      .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
+      .eq("seller_id", seller.id)
+      .eq("status", "claimed");
+    if (eventId) claimsQuery.eq("event_id", eventId);
+
+    const scansQuery = supabase.from("qr_scans").select("id", { count: "exact", head: true }).eq("seller_id", seller.id);
+    if (eventId) scansQuery.eq("event_id", eventId);
+
     const [productResult, eventSellerResult, claimsResult, scansResult] = await Promise.all([
       brandIds.length
         ? supabase
@@ -2045,18 +2130,9 @@ export async function listSellerDashboard() {
           .select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status")
           .in("brand_id", brandIds)
         : Promise.resolve({ data: [], error: null }),
-      supabase
-        .from("event_sellers")
-        .select("id,event_id,seller_id,booth_name,booth_number,status")
-        .eq("seller_id", seller.id)
-        .order("created_at", { ascending: false })
-        .limit(1),
-      supabase
-        .from("sample_claims")
-        .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
-        .eq("seller_id", seller.id)
-        .eq("status", "claimed"),
-      supabase.from("qr_scans").select("id", { count: "exact", head: true }).eq("seller_id", seller.id)
+      eventSellerQuery.limit(1),
+      claimsQuery,
+      scansQuery
     ]);
 
     const products = (productResult.data || []).map(productFromRow);
@@ -2065,12 +2141,15 @@ export async function listSellerDashboard() {
     const claims = (claimsResult.data || []).map(claimFromRow);
     const event = await getEventById(eventSeller.event_id);
 
-    const { data: eventProductRows } = productIds.length
-      ? await supabase
+    const eventProductQuery = productIds.length
+      ? supabase
         .from("event_products")
         .select("id,event_id,product_id,available_quantity,max_claims_per_creator,status")
         .in("product_id", productIds)
-      : { data: [] };
+      : null;
+    if (eventProductQuery && eventId) eventProductQuery.eq("event_id", eventId);
+
+    const { data: eventProductRows } = eventProductQuery ? await eventProductQuery : { data: [] };
 
     const uniqueCreators = new Set(claims.map((claim) => claim.creator_id));
     return {
@@ -2088,10 +2167,14 @@ export async function listSellerDashboard() {
   }
 
   const s = (await loadDbState()) || state();
-  const claims = s.claims.filter((claim) => claim.status === "claimed");
-  const uniqueCreators = new Set(claims.map((claim) => claim.creator_id));
   const seller = s.sellers[0] || demoSeller;
-  const eventSeller = s.eventSellers.find((item) => item.seller_id === seller.id) || demoEventSeller;
+  const eventSeller =
+    s.eventSellers.find((item) => item.seller_id === seller.id && (!eventId || item.event_id === eventId)) ||
+    demoEventSeller;
+  const claims = s.claims.filter(
+    (claim) => claim.status === "claimed" && claim.seller_id === seller.id && (!eventId || claim.event_id === eventSeller.event_id)
+  );
+  const uniqueCreators = new Set(claims.map((claim) => claim.creator_id));
 
   return {
     event: s.events.find((event) => event.id === eventSeller.event_id) || s.events[0] || demoEvent,
@@ -2099,21 +2182,23 @@ export async function listSellerDashboard() {
     eventSeller,
     brands: s.brands,
     products: s.products,
-    eventProducts: s.eventProducts,
+    eventProducts: s.eventProducts.filter((item) => !eventId || item.event_id === eventSeller.event_id),
     claims,
-    creatorsScanned: s.qrs.filter((qr) => qr.last_scanned_at).length,
+    creatorsScanned: s.qrs.filter((qr) => qr.last_scanned_at && (!eventId || qr.event_id === eventSeller.event_id)).length,
     uniqueCreators: uniqueCreators.size,
     samplesIssued: claims.reduce((total, claim) => total + claim.quantity, 0)
   };
 }
 
-export async function getClaimRows() {
+export async function getClaimRows(eventId?: string) {
   const supabase = createServiceClient();
   if (supabase) {
-    const { data: claimRows, error } = await supabase
+    const claimQuery = supabase
       .from("sample_claims")
       .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
       .order("claimed_at", { ascending: false });
+    if (eventId) claimQuery.eq("event_id", eventId);
+    const { data: claimRows, error } = await claimQuery;
     if (error) {
       console.error("Failed to load claims", error);
       return [];
@@ -2151,7 +2236,7 @@ export async function getClaimRows() {
   }
 
   const s = (await loadDbState()) || state();
-  return s.claims.map((claim) => ({
+  return s.claims.filter((claim) => !eventId || claim.event_id === eventId).map((claim) => ({
     claim,
     event: s.events.find((event) => event.id === claim.event_id) || demoEvent,
     creator: s.creators.find((creator) => creator.id === claim.creator_id)!,

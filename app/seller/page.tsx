@@ -13,16 +13,16 @@ export default async function SellerDashboard() {
         <p className="text-sm font-black uppercase text-cyan-700">Seller Portal</p>
         <h1 className="mt-2 text-3xl font-black text-ink">{dashboard.seller.company_name}</h1>
         <p className="mt-2 text-slate-600">Assigned to {dashboard.event.event_name}</p>
-        <Link className="tap-button tap-button-primary mt-5 w-full min-h-16 text-base sm:w-auto" href={`/seller/events/${dashboard.event.id}/scan`}>
+        <Link className="tap-button tap-button-primary mt-5 w-full min-h-16 text-base sm:w-auto" href="/seller/events">
           <ScanLine className="size-5" />
           Scan Creator QR
         </Link>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric href={`/seller/events/${dashboard.event.id}/scan`} icon={<QrCode className="size-5" />} label="Creators Scanned" value={number(dashboard.creatorsScanned)} />
-        <Metric href={`/seller/events/${dashboard.event.id}/claims`} icon={<Users className="size-5" />} label="Unique Creators" value={number(dashboard.uniqueCreators)} />
-        <Metric href={`/seller/events/${dashboard.event.id}/claims`} icon={<PackageCheck className="size-5" />} label="Samples Issued" value={number(dashboard.samplesIssued)} />
+        <Metric href="/seller/claims" icon={<QrCode className="size-5" />} label="Creators Scanned" value={number(dashboard.creatorsScanned)} />
+        <Metric href="/seller/claims" icon={<Users className="size-5" />} label="Unique Creators" value={number(dashboard.uniqueCreators)} />
+        <Metric href="/seller/claims" icon={<PackageCheck className="size-5" />} label="Samples Issued" value={number(dashboard.samplesIssued)} />
         <Metric href="/seller/products" icon={<PackageCheck className="size-5" />} label="Products Remaining" value={number(dashboard.eventProducts.reduce((total, item) => total + item.available_quantity, 0))} />
       </div>
     </section>

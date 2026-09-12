@@ -16,6 +16,7 @@ import {
   issueSampleClaim,
   setRegistrationStatus,
   submitRegistration,
+  updateProduct,
   updateEventBanner
 } from "@/lib/repository";
 import { ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, requireAuth, userHasRole } from "@/lib/auth";
@@ -281,6 +282,17 @@ export async function addProductAction(formData: FormData) {
     message: result.message,
     result: result.ok ? "success" : "error"
   });
+  revalidatePath("/seller/products");
+  redirect(`/seller/products?${params.toString()}`);
+}
+
+export async function updateProductAction(formData: FormData) {
+  const result = await updateProduct(formData);
+  const params = new URLSearchParams({
+    message: result.message,
+    result: result.ok ? "success" : "error"
+  });
+  revalidatePath("/seller");
   revalidatePath("/seller/products");
   redirect(`/seller/products?${params.toString()}`);
 }

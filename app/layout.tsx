@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
+import { PublicHeader } from "@/components/PublicHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,16 +14,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body>
-        <header className="border-b border-slate-200/70 bg-white/85 backdrop-blur">
-          <div className="tap-shell flex min-h-16 items-center justify-between gap-4">
-            <Link href="/vismincreatorsclub" className="font-black text-ink">
-              VisMin Creators Club
-            </Link>
-            <nav className="flex items-center gap-3 text-sm font-bold text-slate-600">
-              <Link href="/events">Events</Link>
-            </nav>
-          </div>
-        </header>
+        <PublicHeader />
         {children}
       </body>
     </html>

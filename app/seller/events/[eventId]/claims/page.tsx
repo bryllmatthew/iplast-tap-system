@@ -4,13 +4,16 @@ import { number, time } from "@/lib/format";
 import { getClaimRows, listSellerDashboard } from "@/lib/repository";
 
 export default async function SellerClaimsPage({
+  params,
   searchParams
 }: {
+  params: Promise<{ eventId: string }>;
   searchParams: Promise<{ product?: string; creator?: string }>;
 }) {
+  const { eventId } = await params;
   const query = await searchParams;
-  const rows = await getClaimRows();
-  const dashboard = await listSellerDashboard();
+  const dashboard = await listSellerDashboard(eventId);
+  const rows = (await getClaimRows(eventId)).filter(({ claim }) => claim.seller_id === dashboard.seller.id);
   const creatorNeedle = (query.creator || "").trim().toLowerCase();
   const filtered = rows.filter(({ creator, product }) => {
     const productMatch = !query.product || product.id === query.product;

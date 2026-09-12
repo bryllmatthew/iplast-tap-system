@@ -4,8 +4,13 @@ import { ClipboardList, PackageCheck, ScanLine } from "lucide-react";
 import { number } from "@/lib/format";
 import { listSellerDashboard } from "@/lib/repository";
 
-export default async function SellerEventPage() {
-  const dashboard = await listSellerDashboard();
+export default async function SellerEventPage({
+  params
+}: {
+  params: Promise<{ eventId: string }>;
+}) {
+  const { eventId } = await params;
+  const dashboard = await listSellerDashboard(eventId);
 
   return (
     <section className="space-y-5">

@@ -18,15 +18,12 @@ export default async function AdminDashboard() {
   return (
     <div className="space-y-5">
       <section className="tap-card overflow-hidden">
-        <div className="grid gap-5 p-5 lg:grid-cols-[1fr_260px]">
+        <div className="p-5">
           <div>
             <p className="text-sm font-black uppercase text-cyan-700">Event Overview</p>
             <h1 className="mt-2 text-3xl font-black text-ink">{overview.event.event_name}</h1>
             <p className="mt-2 max-w-3xl text-slate-600">{overview.event.description}</p>
           </div>
-          <Link className="tap-button tap-button-primary h-max" href="/vismincreatorsclub">
-            View Public Page
-          </Link>
         </div>
       </section>
 

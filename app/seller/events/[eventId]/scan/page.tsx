@@ -14,7 +14,7 @@ export default async function SellerScanPage({
 }) {
   const { eventId } = await params;
   const query = await searchParams;
-  const dashboard = await listSellerDashboard();
+  const dashboard = await listSellerDashboard(eventId);
   const validation = query.token ? await validateQrForSeller(eventId, query.token) : null;
   const verified = validation?.ok ? validation.data : undefined;
   const invalidValidation = validation && !validation.ok ? validation : undefined;

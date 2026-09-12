@@ -13,7 +13,7 @@ export default async function SellerEventsPage() {
       <div className="tap-card p-5">
         <p className="text-sm font-black uppercase text-cyan-700">My Events</p>
         <h1 className="mt-2 text-3xl font-black text-ink">Assigned event list</h1>
-        <p className="mt-2 text-slate-600">Select an event to scan creators, review claims, or monitor products.</p>
+        <p className="mt-2 text-slate-600">Choose an event first, then scan creators, review claims, or monitor products.</p>
       </div>
 
       <div className="grid gap-4">

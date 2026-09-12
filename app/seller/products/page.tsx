@@ -1,4 +1,4 @@
-import { addBrandAction, addProductAction } from "@/app/actions";
+import { addBrandAction, addProductAction, updateProductAction } from "@/app/actions";
 import { number } from "@/lib/format";
 import { listSellerDashboard, listSellerProductRows } from "@/lib/repository";
 
@@ -110,14 +110,33 @@ export default async function SellerProductsPage({
             </thead>
             <tbody>
               {productRows.map(({ product, brand, issued, remaining }) => (
-                <tr key={product.id} className="border-t border-slate-100">
-                  <td className="p-4 text-slate-600">{brand.brand_name}</td>
-                  <td className="p-4 font-black text-ink">{product.product_name}</td>
-                  <td className="p-4 text-slate-600">{product.sku || "-"}</td>
-                  <td className="p-4 text-slate-600">{number(product.sample_inventory)}</td>
-                  <td className="p-4 font-black text-cyan-700">{number(issued)}</td>
-                  <td className="p-4 font-black text-green-700">{number(remaining)}</td>
-                  <td className="p-4 text-slate-600">{product.max_claims_per_creator} per creator</td>
+                <tr key={product.id} className="border-t border-slate-100 align-top">
+                  <td className="p-3 text-slate-600">{brand.brand_name}</td>
+                  <td className="p-3">
+                    <form id={`product-${product.id}`} action={updateProductAction} className="grid gap-2">
+                      <input type="hidden" name="product_id" value={product.id} />
+                      <input className="tap-input min-w-44" name="product_name" defaultValue={product.product_name} required />
+                      <textarea className="tap-input min-h-20 min-w-56" name="description" defaultValue={product.description} placeholder="Description" />
+                    </form>
+                  </td>
+                  <td className="p-3">
+                    <input className="tap-input min-w-32" form={`product-${product.id}`} name="sku" defaultValue={product.sku || ""} />
+                  </td>
+                  <td className="p-3">
+                    <input className="tap-input min-w-24" form={`product-${product.id}`} name="sample_inventory" type="number" min={0} defaultValue={product.sample_inventory} />
+                  </td>
+                  <td className="p-3 font-black text-cyan-700">{number(issued)}</td>
+                  <td className="p-3">
+                    <input className="tap-input min-w-24" form={`product-${product.id}`} name="available_quantity" type="number" min={0} defaultValue={remaining} />
+                  </td>
+                  <td className="p-3">
+                    <div className="grid gap-2">
+                      <input className="tap-input min-w-24" form={`product-${product.id}`} name="max_claims_per_creator" type="number" min={1} defaultValue={product.max_claims_per_creator} />
+                      <button className="tap-button tap-button-primary" form={`product-${product.id}`} type="submit">
+                        Save
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

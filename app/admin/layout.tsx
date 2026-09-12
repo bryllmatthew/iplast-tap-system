@@ -25,14 +25,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <main className="tap-shell grid gap-5 pb-24 pt-4 lg:grid-cols-[220px_1fr] lg:py-6">
-      <aside className="tap-card hidden h-max p-3 lg:block">
-        <div className="flex items-center justify-between gap-2 px-3 py-2">
-          <p className="text-xs font-black uppercase text-slate-400">TAP Admin</p>
-          <form action={logoutAction}>
-            <button className="text-xs font-black text-cyan-700" type="submit">
+      <div className="tap-card col-span-full flex min-h-14 items-center justify-between gap-4 px-4">
+        <Link href="/admin" className="font-black text-ink">
+          iPlast TAP System
+        </Link>
+        <div className="flex items-center gap-3">
+          <Link className="tap-button tap-button-primary" href="/vismincreatorsclub">
+            View Public Page
+          </Link>
+          <form action={logoutAction} className="hidden lg:block">
+            <button className="tap-button tap-button-secondary" type="submit">
               Logout
             </button>
           </form>
+        </div>
+      </div>
+      <aside className="tap-card hidden h-max p-3 lg:block">
+        <div className="flex items-center justify-between gap-2 px-3 py-2">
+          <p className="text-xs font-black uppercase text-slate-400">TAP Admin</p>
         </div>
         <nav className="grid gap-1">
           {links.map(([label, href]) => (

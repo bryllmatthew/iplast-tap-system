@@ -741,6 +741,116 @@ export async function listEventSellerRows(eventId: string) {
     });
 }
 
+export async function listSellerDatabaseRows(query = "") {
+  const needle = query.trim().toLowerCase();
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: sellerRows, error } = await supabase
+      .from("sellers")
+      .select("id,company_name,contact_name,email,phone,logo_url,status")
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Failed to load sellers database", error);
+      return [];
+    }
+
+    const sellers = (sellerRows || []).map(sellerFromRow);
+    if (!sellers.length) return [];
+    const sellerIds = unique(sellers.map((seller) => seller.id));
+
+    const [eventSellersResult, brandsResult, claimsResult, invitesResult] = await Promise.all([
+      supabase.from("event_sellers").select("id,event_id,seller_id,booth_name,booth_number,status").in("seller_id", sellerIds),
+      supabase.from("brands").select("id,seller_id,brand_name,logo_url,description,status").in("seller_id", sellerIds),
+      supabase
+        .from("sample_claims")
+        .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
+        .in("seller_id", sellerIds)
+        .eq("status", "claimed"),
+      supabase.from("seller_invites").select("id,seller_id,email,login_url,temporary_password,created_at,status").in("seller_id", sellerIds)
+    ]);
+
+    const eventSellers = (eventSellersResult.data || []).map(eventSellerFromRow);
+    const brands = (brandsResult.data || []).map(brandFromRow);
+    const claims = (claimsResult.data || []).map(claimFromRow);
+    const invites = (invitesResult.data || []).map((invite) => ({
+      id: String(invite.id),
+      seller_id: String(invite.seller_id),
+      email: String(invite.email),
+      login_url: String(invite.login_url),
+      temporary_password: String(invite.temporary_password),
+      created_at: String(invite.created_at),
+      status: String(invite.status || "queued") as SellerInvite["status"]
+    }));
+
+    const brandIds = unique(brands.map((brand) => brand.id));
+    const [productsResult, eventsResult] = await Promise.all([
+      brandIds.length
+        ? supabase
+          .from("products")
+          .select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status")
+          .in("brand_id", brandIds)
+        : Promise.resolve({ data: [], error: null }),
+      eventSellers.length ? supabase.from("events").select(eventSelect).in("id", unique(eventSellers.map((item) => item.event_id))) : Promise.resolve({ data: [], error: null })
+    ]);
+
+    const products = (productsResult.data || []).map(productFromRow);
+    const events = (eventsResult.data || []).map(eventFromRow);
+
+    return sellers
+      .map((seller) => {
+        const sellerBrands = brands.filter((brand) => brand.seller_id === seller.id);
+        const sellerEventSellers = eventSellers.filter((eventSeller) => eventSeller.seller_id === seller.id);
+        return {
+          seller,
+          brands: sellerBrands,
+          products: products.filter((product) => sellerBrands.some((brand) => brand.id === product.brand_id)),
+          eventSellers: sellerEventSellers,
+          events: sellerEventSellers.map((eventSeller) => events.find((event) => event.id === eventSeller.event_id)).filter(Boolean) as Event[],
+          claims: claims.filter((claim) => claim.seller_id === seller.id),
+          invite: invites.find((invite) => invite.seller_id === seller.id)
+        };
+      })
+      .filter(({ seller, brands, events }) => {
+        if (!needle) return true;
+        return [
+          seller.company_name,
+          seller.contact_name,
+          seller.email,
+          seller.phone,
+          ...brands.map((brand) => brand.brand_name),
+          ...events.map((event) => event.event_name)
+        ].some((value) => value.toLowerCase().includes(needle));
+      });
+  }
+
+  const s = state();
+  return s.sellers
+    .map((seller) => {
+      const brands = s.brands.filter((brand) => brand.seller_id === seller.id);
+      const eventSellers = s.eventSellers.filter((eventSeller) => eventSeller.seller_id === seller.id);
+      return {
+        seller,
+        brands,
+        products: s.products.filter((product) => brands.some((brand) => brand.id === product.brand_id)),
+        eventSellers,
+        events: eventSellers.map((eventSeller) => s.events.find((event) => event.id === eventSeller.event_id)).filter(Boolean) as Event[],
+        claims: s.claims.filter((claim) => claim.seller_id === seller.id && claim.status === "claimed"),
+        invite: s.sellerInvites.find((invite) => invite.seller_id === seller.id)
+      };
+    })
+    .filter(({ seller, brands, events }) => {
+      if (!needle) return true;
+      return [
+        seller.company_name,
+        seller.contact_name,
+        seller.email,
+        seller.phone,
+        ...brands.map((brand) => brand.brand_name),
+        ...events.map((event) => event.event_name)
+      ].some((value) => value.toLowerCase().includes(needle));
+    });
+}
+
 export async function addEventSeller(formData: FormData, logoUrl?: string) {
   const eventId = String(formData.get("event_id") || "");
   const sellerName = String(formData.get("seller_name") || "").trim();

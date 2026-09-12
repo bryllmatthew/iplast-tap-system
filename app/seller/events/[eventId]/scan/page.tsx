@@ -21,6 +21,11 @@ export default async function SellerScanPage({
 
   return (
     <section className="space-y-5">
+      <div className="tap-card p-4 lg:hidden">
+        <p className="mb-3 text-sm font-black uppercase text-cyan-700">Scan Creator QR</p>
+        <QrScanner eventId={eventId} />
+      </div>
+
       <div className="tap-card p-5">
         <h1 className="text-3xl font-black text-ink">Scan Creator QR</h1>
         <p className="mt-2 text-slate-600">Open the camera, point at the creator QR, then choose a product to issue.</p>
@@ -40,7 +45,7 @@ export default async function SellerScanPage({
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[0.72fr_1.28fr]">
-        <div className="tap-card p-5">
+        <div className="tap-card hidden p-5 lg:block">
           <p className="mb-3 text-sm font-black uppercase text-cyan-700">Fast Mobile Scan</p>
           <QrScanner eventId={eventId} />
         </div>

@@ -19,16 +19,16 @@ export default async function CreatorDetailPage({
 
   return (
     <section className="space-y-5">
-      <div className="tap-card p-5">
+      <div className="tap-card min-w-0 p-5">
         <Link className="text-sm font-bold text-cyan-700" href="/admin/creators">
           Back to creators
         </Link>
-        <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_auto]">
-          <div>
+        <div className="mt-4 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="min-w-0">
             <h1 className="text-3xl font-black text-ink">{creator.full_name}</h1>
             <p className="mt-1 text-slate-600">@{creator.tiktok_username} - {creator.creator_category}</p>
-            <a className="mt-2 inline-flex font-bold text-cyan-700 underline" href={creator.tiktok_profile_url} target="_blank" rel="noreferrer">
-              {creator.tiktok_profile_url}
+            <a className="mt-2 inline-flex max-w-full break-all font-bold text-cyan-700 underline" href={creator.tiktok_profile_url} target="_blank" rel="noreferrer">
+              TikTok profile
             </a>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -39,8 +39,8 @@ export default async function CreatorDetailPage({
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
-        <section className="tap-card p-5">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+        <section className="tap-card min-w-0 p-5">
           <h2 className="text-xl font-black text-ink">Creator Details</h2>
           <div className="mt-4 grid gap-3">
             <Info label="Email" value={creator.email} />
@@ -54,11 +54,11 @@ export default async function CreatorDetailPage({
           </div>
         </section>
 
-        <section className="tap-card p-5">
+        <section className="tap-card min-w-0 p-5">
           <h2 className="text-xl font-black text-ink">Event Participation</h2>
           <div className="mt-4 grid gap-3">
             {registrations.map(({ registration, event, attendance, qr }) => (
-              <div key={registration.id} className="rounded-lg bg-slate-50 p-4">
+              <div key={registration.id} className="min-w-0 rounded-lg bg-slate-50 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-black text-ink">{event.event_name}</p>
@@ -82,11 +82,30 @@ export default async function CreatorDetailPage({
         </section>
       </div>
 
-      <section className="tap-card overflow-hidden">
+      <section className="tap-card min-w-0 overflow-hidden">
         <div className="border-b border-slate-200 p-5">
           <h2 className="text-xl font-black text-ink">Sample Claim History</h2>
         </div>
-        <div className="overflow-x-auto">
+        <div className="grid gap-3 p-4 md:hidden">
+          {sampleClaims.map(({ claim, event, seller, brand, product }) => (
+            <article key={claim.id} className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-black text-ink">{product.product_name}</p>
+                  <p className="text-sm text-slate-500">{brand.brand_name}</p>
+                </div>
+                <span className="shrink-0 font-black text-ink">Qty {number(claim.quantity)}</span>
+              </div>
+              <div className="mt-3 grid gap-1 text-sm text-slate-600">
+                <p>{event.event_name}</p>
+                <p>{seller.company_name}</p>
+                <p>{shortDate(claim.claimed_at)} {time(claim.claimed_at)}</p>
+              </div>
+            </article>
+          ))}
+          {sampleClaims.length === 0 ? <div className="p-8 text-center text-slate-500">No sample claims yet.</div> : null}
+        </div>
+        <div className="hidden max-w-full overflow-x-auto md:block">
           <table className="w-full min-w-[760px] text-left">
             <thead className="bg-slate-50 text-xs font-black uppercase text-slate-500">
               <tr>

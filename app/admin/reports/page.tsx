@@ -17,11 +17,31 @@ export default async function ReportsPage() {
         <Metric label="Checked-In Creators" value={number(overview.checkedIn)} />
         <Metric label="Samples Issued" value={number(overview.samplesIssued)} />
       </div>
-      <div className="tap-card overflow-hidden">
+      <div className="tap-card min-w-0 overflow-hidden">
         <div className="border-b border-slate-200 p-5">
           <h2 className="text-xl font-black text-ink">Sample Claim History</h2>
         </div>
-        <div className="overflow-x-auto">
+        <div className="grid gap-3 p-4 md:hidden">
+          {claims.map(({ claim, creator, brand, product }) => (
+            <article key={claim.id} className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-black text-ink">{creator.full_name}</p>
+                  <p className="text-sm text-slate-500">@{creator.tiktok_username}</p>
+                </div>
+                <span className="shrink-0 font-black text-ink">Qty {number(claim.quantity)}</span>
+              </div>
+              <div className="mt-3 grid gap-1 text-sm text-slate-600">
+                <p>{brand.brand_name}</p>
+                <p className="font-bold text-ink">{product.product_name}</p>
+                <p>GMV: {currency(creator.gmv_max_total)}</p>
+                <p>Claimed: {time(claim.claimed_at)}</p>
+              </div>
+            </article>
+          ))}
+          {claims.length === 0 ? <div className="p-8 text-center text-slate-500">No sample claims yet.</div> : null}
+        </div>
+        <div className="hidden max-w-full overflow-x-auto md:block">
           <table className="w-full min-w-[820px] text-left">
             <thead className="bg-slate-50 text-sm font-black uppercase text-slate-500">
               <tr>

@@ -33,7 +33,17 @@ export default async function CreatorsDatabasePage({
         </div>
       </div>
 
-      <div className="tap-card overflow-hidden">
+      <div className="tap-card divide-y divide-slate-100 overflow-hidden md:hidden">
+        {rows.map(({ creator, attendance }) => (
+          <Link key={`${creator.id}-${attendance.id}`} className="block px-4 py-3 active:bg-slate-50" href={`/admin/creators/${creator.id}`}>
+            <p className="font-black text-ink">{creator.full_name}</p>
+            <p className="mt-1 text-sm text-slate-500">{creator.email}</p>
+          </Link>
+        ))}
+        {rows.length === 0 ? <div className="p-8 text-center text-slate-500">No checked-in creators found.</div> : null}
+      </div>
+
+      <div className="tap-card hidden overflow-hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left">
             <thead className="bg-slate-50 text-xs font-black uppercase text-slate-500">

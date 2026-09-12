@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CalendarDays, MapPin, Plus } from "lucide-react";
 
 import { number, shortDate } from "@/lib/format";
-import { listEvents, listRegistrations } from "@/lib/repository";
+import { getClaimRows, listEvents, listRegistrations } from "@/lib/repository";
 import { eventStatusClass } from "@/lib/status";
 
 export default async function EventsPage({
@@ -12,10 +12,14 @@ export default async function EventsPage({
 }) {
   const query = await searchParams;
   const events = await listEvents();
+  const claims = await getClaimRows();
   const rows = await Promise.all(
     events.map(async (event) => ({
       event,
-      registrations: await listRegistrations(event.id)
+      registrations: await listRegistrations(event.id),
+      samplesIssued: claims
+        .filter(({ claim }) => claim.event_id === event.id)
+        .reduce((total, { claim }) => total + claim.quantity, 0)
     }))
   );
 
@@ -44,7 +48,7 @@ export default async function EventsPage({
       </div>
 
       <div className="grid gap-4">
-        {rows.map(({ event, registrations }) => {
+        {rows.map(({ event, registrations, samplesIssued }) => {
           const approved = registrations.filter((row) => row.registration.registration_status === "approved").length;
           const checkedIn = registrations.filter((row) => row.attendance?.status === "checked_in").length;
           return (
@@ -71,10 +75,11 @@ export default async function EventsPage({
                       Open Event
                     </Link>
                   </div>
-                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                    <Metric label="Registrants" value={registrations.length} />
+                  <div className="mt-5 grid gap-3 sm:grid-cols-4">
+                    <Metric label="Registered" value={registrations.length} />
                     <Metric label="Approved" value={approved} />
                     <Metric label="Checked In" value={checkedIn} />
+                    <Metric label="Samples Issued" value={samplesIssued} />
                   </div>
                 </div>
               </div>

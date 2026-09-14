@@ -1591,7 +1591,12 @@ export async function updateProduct(formData: FormData) {
       ? await supabase.from("event_sellers").select("event_id").eq("seller_id", brand.seller_id)
       : { data: [], error: null };
     if (assignedEventsError) return { ok: false, message: assignedEventsError.message };
-    const assignedEventIds = (assignedEvents || []).map((item) => String(item.event_id));
+    let assignedEventIds = (assignedEvents || []).map((item) => String(item.event_id));
+    if (!assignedEventIds.length) {
+      const { data: allEvents, error: allEventsError } = await supabase.from("events").select("id");
+      if (allEventsError) return { ok: false, message: allEventsError.message };
+      assignedEventIds = (allEvents || []).map((item) => String(item.id));
+    }
 
     const { data: eventProducts, error: eventProductsLoadError } = await supabase
       .from("event_products")
@@ -1617,7 +1622,7 @@ export async function updateProduct(formData: FormData) {
       .map((eventId) => ({
         event_id: eventId,
         product_id: productId,
-        available_quantity: adjustedInventory,
+        available_quantity: addRemaining || adjustedInventory,
         max_claims_per_creator: maxClaimsPerCreator,
         status: "active"
       }));
@@ -1641,7 +1646,8 @@ export async function updateProduct(formData: FormData) {
   product.sample_inventory = adjustedInventory;
   product.max_claims_per_creator = maxClaimsPerCreator;
   const brand = s.brands.find((item) => item.id === product.brand_id);
-  const assignedEventIds = brand ? s.eventSellers.filter((item) => item.seller_id === brand.seller_id).map((item) => item.event_id) : [];
+  let assignedEventIds = brand ? s.eventSellers.filter((item) => item.seller_id === brand.seller_id).map((item) => item.event_id) : [];
+  if (!assignedEventIds.length) assignedEventIds = s.events.map((event) => event.id);
   s.eventProducts
     .filter((item) => item.product_id === productId && (!assignedEventIds.length || assignedEventIds.includes(item.event_id)))
     .forEach((item) => {
@@ -1655,7 +1661,7 @@ export async function updateProduct(formData: FormData) {
       id: uid("evp"),
       event_id: eventId,
       product_id: product.id,
-      available_quantity: adjustedInventory,
+      available_quantity: addRemaining || adjustedInventory,
       max_claims_per_creator: maxClaimsPerCreator,
       status: "active"
     });
@@ -2449,10 +2455,34 @@ export async function issueSampleClaim(eventId: string, token: string, productId
     const verified = await validateQrForSeller(eventId, token);
     if (!verified.ok) return { ok: false, code: verified.code, message: verified.message };
     const s = (await loadDbState()) || state();
-    const eventProduct = s.eventProducts.find((item) => item.event_id === eventId && item.product_id === productId && item.status === "active");
     const product = s.products.find((item) => item.id === productId);
     const brand = product ? s.brands.find((item) => item.id === product.brand_id) : null;
-    if (!eventProduct || !product || !brand) return { ok: false, code: "product_unavailable", message: "Product is unavailable for this event." };
+    if (!product || !brand) return { ok: false, code: "product_unavailable", message: "Product is unavailable for this event." };
+    let eventProduct = s.eventProducts.find((item) => item.event_id === eventId && item.product_id === productId && item.status === "active");
+
+    if (!eventProduct) {
+      const { data: createdEventProduct, error: createEventProductError } = await supabase
+        .from("event_products")
+        .upsert(
+          {
+            event_id: eventId,
+            product_id: productId,
+            available_quantity: product.sample_inventory,
+            max_claims_per_creator: product.max_claims_per_creator,
+            status: "active"
+          },
+          { onConflict: "event_id,product_id" }
+        )
+        .select("id,event_id,product_id,available_quantity,max_claims_per_creator,status")
+        .maybeSingle();
+      if (createEventProductError) return { ok: false, code: "product_unavailable", message: createEventProductError.message };
+      if (createdEventProduct) {
+        eventProduct = eventProductFromRow(createdEventProduct);
+        s.eventProducts.push(eventProduct);
+      }
+    }
+
+    if (!eventProduct) return { ok: false, code: "product_unavailable", message: "Product is unavailable for this event." };
 
     const duplicate = s.claims.find(
       (claim) =>
@@ -2511,10 +2541,21 @@ export async function issueSampleClaim(eventId: string, token: string, productId
   const verified = await validateQrForSeller(eventId, token);
   if (!verified.ok) return { ok: false, code: verified.code, message: verified.message };
 
-  const eventProduct = s.eventProducts.find((item) => item.event_id === eventId && item.product_id === productId && item.status === "active");
   const product = s.products.find((item) => item.id === productId);
   const brand = product ? s.brands.find((item) => item.id === product.brand_id) : null;
-  if (!eventProduct || !product || !brand) return { ok: false, code: "product_unavailable", message: "Product is unavailable for this event." };
+  if (!product || !brand) return { ok: false, code: "product_unavailable", message: "Product is unavailable for this event." };
+  let eventProduct = s.eventProducts.find((item) => item.event_id === eventId && item.product_id === productId && item.status === "active");
+  if (!eventProduct) {
+    eventProduct = {
+      id: uid("evp"),
+      event_id: eventId,
+      product_id: productId,
+      available_quantity: product.sample_inventory,
+      max_claims_per_creator: product.max_claims_per_creator,
+      status: "active"
+    };
+    s.eventProducts.unshift(eventProduct);
+  }
 
   const duplicate = s.claims.find(
     (claim) =>
@@ -2631,6 +2672,23 @@ export async function listSellerDashboard(eventId?: string) {
     if (eventProductQuery && eventId) eventProductQuery = eventProductQuery.eq("event_id", eventId);
 
     const { data: eventProductRows } = eventProductQuery ? await eventProductQuery : { data: [] };
+    const eventProducts = (eventProductRows || []).map(eventProductFromRow);
+    const selectedEventId = eventId || eventSeller.event_id;
+    const existingEventProductKeys = new Set(eventProducts.map((item) => `${item.event_id}:${item.product_id}`));
+    if (selectedEventId) {
+      for (const product of products) {
+        const key = `${selectedEventId}:${product.id}`;
+        if (existingEventProductKeys.has(key)) continue;
+        eventProducts.push({
+          id: "",
+          event_id: selectedEventId,
+          product_id: product.id,
+          available_quantity: product.sample_inventory,
+          max_claims_per_creator: product.max_claims_per_creator,
+          status: "active"
+        });
+      }
+    }
 
     const uniqueCreators = new Set(claims.map((claim) => claim.creator_id));
     return {
@@ -2639,7 +2697,7 @@ export async function listSellerDashboard(eventId?: string) {
       eventSeller,
       brands,
       products,
-      eventProducts: (eventProductRows || []).map(eventProductFromRow),
+      eventProducts,
       claims,
       creatorsScanned: scansResult.count || 0,
       uniqueCreators: uniqueCreators.size,
@@ -2736,7 +2794,9 @@ export async function listSellerProductRows() {
     const issued = claims
       .filter((claim) => claim.product_id === product.id)
       .reduce((total, claim) => total + claim.quantity, 0);
-    const remaining = eventProducts.reduce((total, item) => total + item.available_quantity, 0);
+    const remaining = eventProducts.length
+      ? eventProducts.reduce((total, item) => total + item.available_quantity, 0)
+      : product.sample_inventory;
 
     return { product, brand, issued, remaining, eventProducts };
   });

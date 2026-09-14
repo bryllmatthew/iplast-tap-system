@@ -15,6 +15,7 @@ import {
   createEvent,
   deleteEvent,
   deleteSeller,
+  getSellerDetail,
   issueSampleClaim,
   removeSellerEvent,
   setRegistrationStatus,
@@ -26,6 +27,7 @@ import {
 } from "@/lib/repository";
 import { ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, requireAuth, userHasRole } from "@/lib/auth";
 import { cleanEnv } from "@/lib/clean-env";
+import { siteUrl } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 async function savePublicUpload(file: File) {
@@ -341,6 +343,60 @@ export async function updateSellerAction(formData: FormData) {
   }
 
   redirect(`${redirectTo}?${params.toString()}`);
+}
+
+export async function resetSellerPasswordAction(formData: FormData) {
+  await requireAuth("admin");
+
+  const sellerId = String(formData.get("seller_id") || "");
+  const password = String(formData.get("password") || "").trim();
+  const confirmPassword = String(formData.get("confirm_password") || "").trim();
+  const detail = sellerId ? await getSellerDetail(sellerId) : null;
+  let ok = false;
+  let message = "Seller not found.";
+
+  if (detail) {
+    if (password.length < 8) {
+      message = "Password must be at least 8 characters.";
+    } else if (password !== confirmPassword) {
+      message = "Passwords do not match.";
+    } else {
+      try {
+        await ensureSellerAuthUser(detail.seller, password);
+        message = "Seller password updated.";
+        ok = true;
+
+        const url = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+        const key = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
+        if (url && key) {
+          const supabase = createSupabaseAdmin(url, key, {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false
+            }
+          });
+          await supabase.from("seller_invites").insert({
+            seller_id: detail.seller.id,
+            email: detail.seller.email,
+            login_url: `${siteUrl()}/seller`,
+            temporary_password: password,
+            status: "queued"
+          });
+        }
+      } catch (error) {
+        console.error("Seller password reset failed", error);
+        message = "Could not update seller password. Please try again.";
+      }
+    }
+  }
+
+  revalidatePath("/admin/sellers");
+  revalidatePath(`/admin/sellers/${sellerId}`);
+  const params = new URLSearchParams({
+    sellerMessage: message,
+    sellerResult: ok ? "success" : "error"
+  });
+  redirect(`/admin/sellers/${sellerId}?${params.toString()}`);
 }
 
 export async function addEventSellerAction(formData: FormData) {

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil, X } from "lucide-react";
+import { KeyRound, Pencil, X } from "lucide-react";
 
 import { DeleteSellerButton } from "@/components/DeleteSellerButton";
-import { updateSellerAction } from "@/app/actions";
+import { resetSellerPasswordAction, updateSellerAction } from "@/app/actions";
 import { number, shortDate, time } from "@/lib/format";
 import { getSellerDetail } from "@/lib/repository";
 import type { Seller } from "@/lib/types";
@@ -13,7 +13,7 @@ export default async function SellerDetailPage({
   searchParams
 }: {
   params: Promise<{ sellerId: string }>;
-  searchParams: Promise<{ edit?: string; sellerMessage?: string; sellerResult?: string }>;
+  searchParams: Promise<{ edit?: string; resetPassword?: string; sellerMessage?: string; sellerResult?: string }>;
 }) {
   const { sellerId } = await params;
   const query = await searchParams;
@@ -30,6 +30,10 @@ export default async function SellerDetailPage({
             Back to sellers
           </Link>
           <div className="flex flex-wrap gap-2">
+            <Link className="tap-button tap-button-secondary" href={`/admin/sellers/${seller.id}?resetPassword=1`}>
+              <KeyRound className="size-4" />
+              Change Password
+            </Link>
             <Link className="tap-button tap-button-secondary" href={`/admin/sellers/${seller.id}?edit=1`}>
               <Pencil className="size-4" />
               Edit Seller
@@ -140,7 +144,45 @@ export default async function SellerDetailPage({
         </div>
       </section>
       {query.edit === "1" ? <EditSellerModal seller={seller} /> : null}
+      {query.resetPassword === "1" ? <ResetSellerPasswordModal seller={seller} /> : null}
     </section>
+  );
+}
+
+function ResetSellerPasswordModal({ seller }: { seller: Seller }) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
+      <div className="tap-card max-h-[92vh] w-full max-w-lg overflow-y-auto p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black text-ink">Change Seller Password</h2>
+            <p className="mt-2 text-slate-600">Set a new login password for {seller.company_name}.</p>
+          </div>
+          <Link className="tap-button tap-button-secondary" href={`/admin/sellers/${seller.id}`} aria-label="Close password form">
+            <X className="size-4" />
+          </Link>
+        </div>
+
+        <form action={resetSellerPasswordAction} className="mt-5 grid gap-4">
+          <input type="hidden" name="seller_id" value={seller.id} />
+          <label className="tap-label">
+            Seller Email
+            <input className="tap-input" value={seller.email} readOnly />
+          </label>
+          <label className="tap-label">
+            New Password
+            <input className="tap-input" name="password" required type="password" minLength={8} placeholder="At least 8 characters" />
+          </label>
+          <label className="tap-label">
+            Confirm New Password
+            <input className="tap-input" name="confirm_password" required type="password" minLength={8} placeholder="Repeat password" />
+          </label>
+          <button className="tap-button tap-button-primary min-h-12 w-full md:w-max" type="submit">
+            Update Password
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 

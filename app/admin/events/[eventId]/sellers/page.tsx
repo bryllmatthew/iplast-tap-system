@@ -3,6 +3,7 @@ import { Mail, Plus, X } from "lucide-react";
 
 import { addEventSellerAction } from "@/app/actions";
 import { AddSellerProductsTable } from "@/components/AddSellerProductsTable";
+import { DeleteSellerButton } from "@/components/DeleteSellerButton";
 import { number } from "@/lib/format";
 import { getEventById, listEventSellerRows } from "@/lib/repository";
 
@@ -93,7 +94,16 @@ export default async function EventSellersPage({
                     {invite ? <p className="mt-1 text-xs font-bold text-slate-500">Invite {invite.status}</p> : null}
                   </div>
                 </div>
-                <span className="status-pill bg-green-50 text-green-700">{eventSeller.status}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="status-pill bg-green-50 text-green-700">{eventSeller.status}</span>
+                  <DeleteSellerButton
+                    sellerId={seller.id}
+                    sellerName={seller.company_name}
+                    eventId={eventId}
+                    redirectTo={`/admin/events/${eventId}/sellers`}
+                    compact
+                  />
+                </div>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
                 <Info label="Booth" value={eventSeller.booth_number} />

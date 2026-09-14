@@ -13,6 +13,7 @@ import {
   checkInCreator,
   createEvent,
   deleteEvent,
+  deleteSeller,
   issueSampleClaim,
   setRegistrationStatus,
   submitRegistration,
@@ -230,6 +231,33 @@ export async function deleteEventAction(formData: FormData) {
   revalidatePath("/seller");
   revalidatePath("/seller/events");
   redirect(`/admin/events?${params.toString()}`);
+}
+
+export async function deleteSellerAction(formData: FormData) {
+  await requireAuth("admin");
+
+  const sellerId = String(formData.get("seller_id") || "");
+  const eventId = String(formData.get("event_id") || "");
+  const redirectTo = String(formData.get("redirect_to") || (eventId ? `/admin/events/${eventId}/sellers` : "/admin/sellers"));
+  const result = await deleteSeller(sellerId);
+  const params = new URLSearchParams({
+    sellerMessage: result.message,
+    sellerResult: result.ok ? "success" : "error"
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/sellers");
+  revalidatePath(`/admin/sellers/${sellerId}`);
+  revalidatePath("/seller");
+  revalidatePath("/seller/events");
+  revalidatePath("/seller/products");
+  if (eventId) {
+    revalidatePath(`/admin/events/${eventId}`);
+    revalidatePath(`/admin/events/${eventId}/sellers`);
+    revalidatePath(`/admin/events/${eventId}/products`);
+  }
+
+  redirect(`${redirectTo}?${params.toString()}`);
 }
 
 export async function addEventSellerAction(formData: FormData) {

@@ -6,9 +6,9 @@ import { listSellerDatabaseRows } from "@/lib/repository";
 export default async function SellersDatabasePage({
   searchParams
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; sellerMessage?: string; sellerResult?: string }>;
 }) {
-  const { q = "" } = await searchParams;
+  const { q = "", sellerMessage, sellerResult } = await searchParams;
   const rows = await listSellerDatabaseRows(q);
 
   return (
@@ -30,6 +30,15 @@ export default async function SellersDatabasePage({
             </label>
           </form>
         </div>
+        {sellerMessage ? (
+          <div
+            className={`mt-4 rounded-lg border p-3 text-sm font-bold ${
+              sellerResult === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"
+            }`}
+          >
+            {sellerMessage}
+          </div>
+        ) : null}
       </div>
 
       <div className="tap-card divide-y divide-slate-100 overflow-hidden">

@@ -738,6 +738,63 @@ export async function deleteEvent(eventId: string) {
   return { ok: true, message: `${event.event_name} deleted.` };
 }
 
+export async function deleteSeller(sellerId: string) {
+  if (!sellerId) return { ok: false, message: "Seller is required." };
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: seller, error: sellerError } = await supabase
+      .from("sellers")
+      .select("id,company_name")
+      .eq("id", sellerId)
+      .maybeSingle();
+    if (sellerError) return { ok: false, message: sellerError.message };
+    if (!seller) return { ok: false, message: "Seller not found." };
+
+    const { data: brandRows, error: brandError } = await supabase.from("brands").select("id").eq("seller_id", sellerId);
+    if (brandError) return { ok: false, message: brandError.message };
+    const brandIds = (brandRows || []).map((brand) => String(brand.id));
+
+    const { data: productRows, error: productError } = brandIds.length
+      ? await supabase.from("products").select("id").in("brand_id", brandIds)
+      : { data: [], error: null };
+    if (productError) return { ok: false, message: productError.message };
+    const productIds = (productRows || []).map((product) => String(product.id));
+
+    if (productIds.length) {
+      const { error } = await supabase.from("sample_claims").delete().in("product_id", productIds);
+      if (error) return { ok: false, message: error.message };
+    }
+
+    const { error: sellerClaimsError } = await supabase.from("sample_claims").delete().eq("seller_id", sellerId);
+    if (sellerClaimsError) return { ok: false, message: sellerClaimsError.message };
+
+    const { error: scansError } = await supabase.from("qr_scans").delete().eq("seller_id", sellerId);
+    if (scansError) return { ok: false, message: scansError.message };
+
+    const { error } = await supabase.from("sellers").delete().eq("id", sellerId);
+    if (error) return { ok: false, message: error.message };
+
+    return { ok: true, message: `${seller.company_name} deleted.` };
+  }
+
+  const s = state();
+  const sellerIndex = s.sellers.findIndex((seller) => seller.id === sellerId);
+  if (sellerIndex === -1) return { ok: false, message: "Seller not found." };
+
+  const [seller] = s.sellers.splice(sellerIndex, 1);
+  const brandIds = s.brands.filter((brand) => brand.seller_id === sellerId).map((brand) => brand.id);
+  const productIds = s.products.filter((product) => brandIds.includes(product.brand_id)).map((product) => product.id);
+  s.claims = s.claims.filter((claim) => claim.seller_id !== sellerId && !productIds.includes(claim.product_id));
+  s.eventSellers = s.eventSellers.filter((eventSeller) => eventSeller.seller_id !== sellerId);
+  s.eventProducts = s.eventProducts.filter((eventProduct) => !productIds.includes(eventProduct.product_id));
+  s.products = s.products.filter((product) => !productIds.includes(product.id));
+  s.brands = s.brands.filter((brand) => brand.seller_id !== sellerId);
+  s.sellerInvites = s.sellerInvites.filter((invite) => invite.seller_id !== sellerId);
+
+  return { ok: true, message: `${seller.company_name} deleted.` };
+}
+
 export async function listEventSellerRows(eventId: string) {
   const s = (await loadDbState()) || state();
   return s.eventSellers

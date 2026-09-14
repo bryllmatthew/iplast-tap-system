@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { DeleteSellerButton } from "@/components/DeleteSellerButton";
 import { number, shortDate, time } from "@/lib/format";
 import { getSellerDetail } from "@/lib/repository";
 
@@ -18,9 +19,12 @@ export default async function SellerDetailPage({
   return (
     <section className="space-y-5">
       <div className="tap-card p-5">
-        <Link className="text-sm font-bold text-cyan-700" href="/admin/sellers">
-          Back to sellers
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link className="text-sm font-bold text-cyan-700" href="/admin/sellers">
+            Back to sellers
+          </Link>
+          <DeleteSellerButton sellerId={seller.id} sellerName={seller.company_name} redirectTo="/admin/sellers" />
+        </div>
         <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_auto]">
           <div className="flex gap-4">
             {seller.logo_url ? (

@@ -493,6 +493,49 @@ export async function listSellerEvents() {
   }));
 }
 
+export async function removeSellerEvent(eventId: string) {
+  if (!eventId) return { ok: false, message: "Event is required." };
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: seller, error: sellerError } = await supabase
+      .from("sellers")
+      .select("id")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (sellerError) return { ok: false, message: sellerError.message };
+    if (!seller) return { ok: false, message: "Seller not found." };
+
+    const { data: brands, error: brandsError } = await supabase.from("brands").select("id").eq("seller_id", seller.id);
+    if (brandsError) return { ok: false, message: brandsError.message };
+    const brandIds = (brands || []).map((brand) => String(brand.id));
+
+    if (brandIds.length) {
+      const { data: products, error: productsError } = await supabase.from("products").select("id").in("brand_id", brandIds);
+      if (productsError) return { ok: false, message: productsError.message };
+      const productIds = (products || []).map((product) => String(product.id));
+      if (productIds.length) {
+        const { error: eventProductsError } = await supabase.from("event_products").delete().eq("event_id", eventId).in("product_id", productIds);
+        if (eventProductsError) return { ok: false, message: eventProductsError.message };
+      }
+    }
+
+    const { error } = await supabase.from("event_sellers").delete().eq("event_id", eventId).eq("seller_id", seller.id);
+    if (error) return { ok: false, message: error.message };
+    return { ok: true, message: "Event removed from your seller account." };
+  }
+
+  const s = state();
+  const seller = s.sellers[0];
+  if (!seller) return { ok: false, message: "Seller not found." };
+  const brandIds = s.brands.filter((brand) => brand.seller_id === seller.id).map((brand) => brand.id);
+  const productIds = s.products.filter((product) => brandIds.includes(product.brand_id)).map((product) => product.id);
+  s.eventProducts = s.eventProducts.filter((eventProduct) => eventProduct.event_id !== eventId || !productIds.includes(eventProduct.product_id));
+  s.eventSellers = s.eventSellers.filter((eventSeller) => eventSeller.event_id !== eventId || eventSeller.seller_id !== seller.id);
+  return { ok: true, message: "Event removed from your seller account." };
+}
+
 export async function getEventBySlug(slug: string) {
   const supabase = createServiceClient();
   if (supabase) {
@@ -2185,7 +2228,7 @@ export async function validateQrForSeller(eventId: string, token: string): Promi
   };
 }
 
-export async function issueSampleClaim(eventId: string, token: string, productId: string, quantity: number) {
+export async function issueSampleClaim(eventId: string, token: string, productId: string, quantity: number, allowDuplicate = false) {
   if (!Number.isFinite(quantity) || quantity < 1) {
     return { ok: false, code: "invalid_quantity", message: "Quantity must be at least 1." };
   }
@@ -2207,9 +2250,9 @@ export async function issueSampleClaim(eventId: string, token: string, productId
         claim.product_id === productId &&
         claim.status === "claimed"
     );
-    if (duplicate) return { ok: false, code: "already_claimed", message: "Creator has already claimed this product.", claim: duplicate };
     if (quantity > eventProduct.available_quantity) return { ok: false, code: "out_of_stock", message: "Not enough inventory remaining." };
-    if (quantity > eventProduct.max_claims_per_creator) return { ok: false, code: "limit_exceeded", message: "Requested quantity exceeds the claim limit." };
+    if (quantity > eventProduct.max_claims_per_creator) return { ok: false, code: "limit_exceeded", message: "Requested quantity exceeds the limit per creator." };
+    if (duplicate && !allowDuplicate) return { ok: false, code: "already_claimed", message: "Creator has already claimed this product.", claim: duplicate };
 
     const { data: updatedInventory, error: inventoryError } = await supabase
       .from("event_products")
@@ -2247,7 +2290,7 @@ export async function issueSampleClaim(eventId: string, token: string, productId
       })
       .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
       .single();
-    if (claimError) return { ok: false, code: "already_claimed", message: "Creator has already claimed this product." };
+    if (claimError) return { ok: false, code: "claim_error", message: claimError.message };
 
     await supabase.from("creator_event_qr").update({ last_scanned_at: new Date().toISOString() }).eq("id", verified.data.qr.id);
     return { ok: true, code: "claimed", message: "Sample claimed.", claim: claimFromRow(claim) };
@@ -2269,10 +2312,10 @@ export async function issueSampleClaim(eventId: string, token: string, productId
       claim.product_id === productId &&
       claim.status === "claimed"
   );
-  if (duplicate) return { ok: false, code: "already_claimed", message: "Creator has already claimed this product.", claim: duplicate };
+  if (duplicate && !allowDuplicate) return { ok: false, code: "already_claimed", message: "Creator has already claimed this product.", claim: duplicate };
 
   if (quantity > eventProduct.available_quantity) return { ok: false, code: "out_of_stock", message: "Not enough inventory remaining." };
-  if (quantity > eventProduct.max_claims_per_creator) return { ok: false, code: "limit_exceeded", message: "Requested quantity exceeds the claim limit." };
+  if (quantity > eventProduct.max_claims_per_creator) return { ok: false, code: "limit_exceeded", message: "Requested quantity exceeds the limit per creator." };
 
   eventProduct.available_quantity -= quantity;
   const claim: SampleClaim = {

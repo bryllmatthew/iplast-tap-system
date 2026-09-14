@@ -111,7 +111,7 @@ export default async function SellerProductsPage({
                 <th className="p-4">Initial Inventory</th>
                 <th className="p-4">Given</th>
                 <th className="p-4">Remaining</th>
-                <th className="p-4">Limit</th>
+                <th className="p-4">Limit Per Creator</th>
                 <th className="p-4">Action</th>
               </tr>
             </thead>

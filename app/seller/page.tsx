@@ -13,7 +13,7 @@ export default async function SellerDashboard() {
         <p className="text-sm font-black uppercase text-cyan-700">Seller Portal</p>
         <h1 className="mt-2 text-3xl font-black text-ink">{dashboard.seller.company_name}</h1>
         <p className="mt-2 text-slate-600">Assigned to {dashboard.event.event_name}</p>
-        <Link className="tap-button tap-button-primary mt-5 w-full min-h-16 text-base sm:w-auto" href="/seller/events">
+        <Link className="tap-button tap-button-primary mt-5 w-full min-h-16 text-base sm:w-auto" href="/seller/scan">
           <ScanLine className="size-5" />
           Scan Creator QR
         </Link>

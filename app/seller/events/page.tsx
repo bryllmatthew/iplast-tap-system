@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { CalendarDays, MapPin, ScanLine } from "lucide-react";
+import { CalendarDays, MapPin } from "lucide-react";
 
+import { RemoveSellerEventButton } from "@/components/RemoveSellerEventButton";
 import { shortDate } from "@/lib/format";
 import { listSellerEvents } from "@/lib/repository";
 import { eventStatusClass } from "@/lib/status";
 
-export default async function SellerEventsPage() {
+export default async function SellerEventsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ message?: string; result?: string }>;
+}) {
+  const query = await searchParams;
   const rows = await listSellerEvents();
 
   return (
@@ -13,7 +19,12 @@ export default async function SellerEventsPage() {
       <div className="tap-card p-5">
         <p className="text-sm font-black uppercase text-cyan-700">My Events</p>
         <h1 className="mt-2 text-3xl font-black text-ink">Assigned event list</h1>
-        <p className="mt-2 text-slate-600">Choose an event first, then scan creators, review claims, or monitor products.</p>
+        <p className="mt-2 text-slate-600">Choose an event to review claims, booth details, or product activity.</p>
+        {query.message ? (
+          <div className={`mt-4 rounded-lg border p-3 text-sm font-bold ${query.result === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>
+            {query.message}
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-4">
@@ -39,13 +50,10 @@ export default async function SellerEventsPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Link className="tap-button tap-button-primary" href={`/seller/events/${event.id}/scan`}>
-                      <ScanLine className="size-4" />
-                      Scan
-                    </Link>
                     <Link className="tap-button tap-button-secondary" href={`/seller/events/${event.id}`}>
                       Open
                     </Link>
+                    <RemoveSellerEventButton eventId={event.id} eventName={event.event_name} />
                   </div>
                 </div>
               </div>

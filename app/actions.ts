@@ -15,6 +15,7 @@ import {
   deleteEvent,
   deleteSeller,
   issueSampleClaim,
+  removeSellerEvent,
   setRegistrationStatus,
   submitRegistration,
   updateSeller,
@@ -148,6 +149,7 @@ export async function issueSampleClaimAction(formData: FormData) {
   const eventId = String(formData.get("event_id"));
   const token = String(formData.get("token"));
   const productIds = Array.from(new Set(formData.getAll("product_id").map((value) => String(value)).filter(Boolean)));
+  const allowDuplicate = String(formData.get("allow_duplicate") || "") === "1";
 
   if (!productIds.length) {
     const params = new URLSearchParams({
@@ -161,7 +163,7 @@ export async function issueSampleClaimAction(formData: FormData) {
   const results = [];
   for (const productId of productIds) {
     const quantity = Number(formData.get(`quantity_${productId}`) || 1);
-    results.push(await issueSampleClaim(eventId, token, productId, quantity));
+    results.push(await issueSampleClaim(eventId, token, productId, quantity, allowDuplicate));
   }
 
   const claimed = results.filter((result) => result.ok).length;
@@ -183,6 +185,23 @@ export async function issueSampleClaimAction(formData: FormData) {
     message: result.message
   });
   redirect(`/seller/events/${eventId}/scan?${params.toString()}`);
+}
+
+export async function removeSellerEventAction(formData: FormData) {
+  await requireAuth("seller");
+
+  const eventId = String(formData.get("event_id") || "");
+  const result = await removeSellerEvent(eventId);
+  const params = new URLSearchParams({
+    message: result.message,
+    result: result.ok ? "success" : "error"
+  });
+
+  revalidatePath("/seller");
+  revalidatePath("/seller/events");
+  revalidatePath("/seller/scan");
+  revalidatePath(`/seller/events/${eventId}`);
+  redirect(`/seller/events?${params.toString()}`);
 }
 
 export async function createEventAction(formData: FormData) {

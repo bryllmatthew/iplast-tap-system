@@ -18,7 +18,7 @@ export default async function EventProductsPage() {
               <th className="p-4">SKU</th>
               <th className="p-4">Brand</th>
               <th className="p-4">Available</th>
-              <th className="p-4">Limit</th>
+              <th className="p-4">Limit Per Creator</th>
               <th className="p-4">Status</th>
             </tr>
           </thead>

@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ClipboardList, PackageCheck, ScanLine } from "lucide-react";
+import { ClipboardList, PackageCheck } from "lucide-react";
 
+import { RemoveSellerEventButton } from "@/components/RemoveSellerEventButton";
 import { number } from "@/lib/format";
 import { listSellerDashboard } from "@/lib/repository";
 
@@ -20,20 +21,13 @@ export default async function SellerEventPage({
           <span className="status-pill bg-green-50 text-green-700">{dashboard.event.status}</span>
           <h1 className="mt-3 text-3xl font-black text-ink">{dashboard.event.event_name}</h1>
           <p className="mt-2 text-slate-600">{dashboard.eventSeller.booth_name} - {dashboard.eventSeller.booth_number}</p>
-          <Link className="tap-button tap-button-primary mt-5 w-full min-h-16 sm:w-auto" href={`/seller/events/${eventId}/scan`}>
-            <ScanLine className="size-4" />
-            Scan Creator QR
-          </Link>
+          <div className="mt-5">
+            <RemoveSellerEventButton eventId={eventId} eventName={dashboard.event.event_name} />
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <ActionCard
-          icon={<ScanLine className="size-5" />}
-          title="Scan Creator"
-          body="Verify QR eligibility and issue samples."
-          href={`/seller/events/${eventId}/scan`}
-        />
+      <div className="grid gap-4 md:grid-cols-2">
         <ActionCard
           icon={<ClipboardList className="size-5" />}
           title="Claims"

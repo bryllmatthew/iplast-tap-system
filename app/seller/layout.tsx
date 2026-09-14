@@ -10,7 +10,7 @@ export default async function SellerLayout({ children }: { children: React.React
   const links = [
     ["Dashboard", "/seller", Home],
     ["My Events", "/seller/events", CalendarDays],
-    ["Scan", "/seller/events", QrCode],
+    ["Scan", "/seller/scan", QrCode],
     ["Claims", "/seller/claims", ReceiptText],
     ["Products", "/seller/products", PackageCheck]
   ] as const;

@@ -33,9 +33,23 @@ export function SampleClaimSelector({
   const brandProducts = products.filter((product) => product.brand_id === brandId);
 
   return (
-    <form action={action} className="space-y-4">
+    <form
+      action={action}
+      className="space-y-4"
+      onSubmit={(event) => {
+        const form = event.currentTarget;
+        const selectedClaimed = alreadyClaimedProductIds.some((productId) => {
+          const input = form.querySelector<HTMLInputElement>(`input[name="product_id"][value="${productId}"]`);
+          return input?.checked;
+        });
+        if (selectedClaimed && !window.confirm("This creator already claimed this sample. Are you sure you want to proceed?")) {
+          event.preventDefault();
+        }
+      }}
+    >
       <input type="hidden" name="event_id" value={eventId} />
       <input type="hidden" name="token" value={token} />
+      <input type="hidden" name="allow_duplicate" value="1" />
 
       <label className="tap-label">
         1. Select Brand
@@ -53,8 +67,9 @@ export function SampleClaimSelector({
         {brandProducts.map((product) => {
           const eventProduct = eventProducts.find((item) => item.product_id === product.id);
           const remaining = eventProduct?.available_quantity || 0;
+          const limit = eventProduct?.max_claims_per_creator || product.max_claims_per_creator || 1;
           const alreadyClaimed = alreadyClaimedProductIds.includes(product.id);
-          const disabled = alreadyClaimed || remaining <= 0;
+          const disabled = remaining <= 0;
 
           return (
             <label key={product.id} className={`rounded-lg border p-3 ${disabled ? "border-slate-200 bg-slate-50 opacity-70" : "border-slate-200 bg-white"}`}>
@@ -67,11 +82,12 @@ export function SampleClaimSelector({
                       {remaining} left{product.pid ? ` - PID ${product.pid}` : ""}
                       {alreadyClaimed ? " - already claimed" : ""}
                     </span>
+                    <span className="mt-1 block text-xs font-black uppercase text-slate-400">Limit Per Creator: {limit}</span>
                   </span>
                 </span>
                 <span className="tap-label w-28">
                   3. Quantity
-                  <input className="tap-input" min={1} max={Math.max(remaining, 1)} name={`quantity_${product.id}`} type="number" defaultValue={1} disabled={disabled} />
+                  <input className="tap-input" min={1} max={Math.max(Math.min(remaining, limit), 1)} name={`quantity_${product.id}`} type="number" defaultValue={1} disabled={disabled} />
                 </span>
               </div>
             </label>

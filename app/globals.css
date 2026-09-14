@@ -41,16 +41,15 @@ textarea {
 }
 
 .tap-app-shell {
-  width: min(1200px, calc(100vw - 32px));
-  margin: 0 auto;
+  width: 100%;
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
 @media (min-width: 1024px) {
   .tap-app-shell {
-    width: calc(100vw - 32px);
-    max-width: 1760px;
-    margin-left: 16px;
-    margin-right: 16px;
+    width: 100%;
+    max-width: none;
   }
 }
 

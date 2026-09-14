@@ -795,6 +795,100 @@ export async function deleteSeller(sellerId: string) {
   return { ok: true, message: `${seller.company_name} deleted.` };
 }
 
+export async function updateSeller(formData: FormData, logoUrl?: string) {
+  const sellerId = String(formData.get("seller_id") || "");
+  const eventId = String(formData.get("event_id") || "");
+  const sellerName = String(formData.get("seller_name") || "").trim();
+  const contactName = String(formData.get("contact_name") || sellerName).trim();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const phone = String(formData.get("phone") || "").trim();
+  const status = String(formData.get("status") || "active") === "inactive" ? "inactive" : "active";
+  const boothName = String(formData.get("booth_name") || sellerName).trim();
+  const boothNumber = String(formData.get("booth_number") || "").trim();
+
+  if (!sellerId || !sellerName || !email) {
+    return { ok: false, message: "Seller name and email are required." };
+  }
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    const updatePayload: Record<string, string> = {
+      company_name: sellerName,
+      contact_name: contactName,
+      email,
+      phone,
+      status
+    };
+    if (logoUrl) updatePayload.logo_url = logoUrl;
+
+    const { data: seller, error } = await supabase
+      .from("sellers")
+      .update(updatePayload)
+      .eq("id", sellerId)
+      .select("id,company_name,contact_name,email,phone,logo_url,status")
+      .maybeSingle();
+    if (error) return { ok: false, message: error.message };
+    if (!seller) return { ok: false, message: "Seller not found." };
+
+    if (eventId) {
+      if (!boothNumber) return { ok: false, message: "Booth number is required." };
+      const { data: conflict, error: conflictError } = await supabase
+        .from("event_sellers")
+        .select("id")
+        .eq("event_id", eventId)
+        .ilike("booth_number", boothNumber)
+        .neq("seller_id", sellerId)
+        .limit(1);
+      if (conflictError) return { ok: false, message: conflictError.message };
+      if (conflict?.length) return { ok: false, message: "That booth number is already assigned for this event." };
+
+      const { error: eventSellerError } = await supabase
+        .from("event_sellers")
+        .update({
+          booth_name: boothName,
+          booth_number: boothNumber,
+          status
+        })
+        .eq("event_id", eventId)
+        .eq("seller_id", sellerId);
+      if (eventSellerError) return { ok: false, message: eventSellerError.message };
+    }
+
+    return { ok: true, message: "Seller updated.", seller: sellerFromRow(seller) };
+  }
+
+  const s = state();
+  const seller = s.sellers.find((item) => item.id === sellerId);
+  if (!seller) return { ok: false, message: "Seller not found." };
+
+  seller.company_name = sellerName;
+  seller.contact_name = contactName;
+  seller.email = email;
+  seller.phone = phone;
+  seller.status = status;
+  if (logoUrl) seller.logo_url = logoUrl;
+
+  if (eventId) {
+    if (!boothNumber) return { ok: false, message: "Booth number is required." };
+    const conflict = s.eventSellers.find(
+      (eventSeller) =>
+        eventSeller.event_id === eventId &&
+        eventSeller.seller_id !== sellerId &&
+        eventSeller.booth_number.toLowerCase() === boothNumber.toLowerCase()
+    );
+    if (conflict) return { ok: false, message: "That booth number is already assigned for this event." };
+
+    const eventSeller = s.eventSellers.find((item) => item.event_id === eventId && item.seller_id === sellerId);
+    if (eventSeller) {
+      eventSeller.booth_name = boothName;
+      eventSeller.booth_number = boothNumber;
+      eventSeller.status = status;
+    }
+  }
+
+  return { ok: true, message: "Seller updated.", seller };
+}
+
 export async function listEventSellerRows(eventId: string) {
   const s = (await loadDbState()) || state();
   return s.eventSellers

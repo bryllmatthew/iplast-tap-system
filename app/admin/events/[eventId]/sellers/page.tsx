@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Mail, Plus, X } from "lucide-react";
+import { Mail, Pencil, Plus, X } from "lucide-react";
 
-import { addEventSellerAction } from "@/app/actions";
+import { addEventSellerAction, updateSellerAction } from "@/app/actions";
 import { AddSellerProductsTable } from "@/components/AddSellerProductsTable";
 import { DeleteSellerButton } from "@/components/DeleteSellerButton";
 import { number } from "@/lib/format";
 import { getEventById, listEventSellerRows } from "@/lib/repository";
+import type { EventSeller, Seller } from "@/lib/types";
 
 export default async function EventSellersPage({
   params,
@@ -19,6 +20,7 @@ export default async function EventSellersPage({
     inviteEmail?: string;
     invitePassword?: string;
     inviteLogin?: string;
+    editSeller?: string;
   }>;
 }) {
   const { eventId } = await params;
@@ -26,6 +28,7 @@ export default async function EventSellersPage({
   const event = await getEventById(eventId);
   const rows = await listEventSellerRows(eventId);
   const showForm = query.addSeller === "1";
+  const editRow = query.editSeller ? rows.find(({ seller }) => seller.id === query.editSeller) : undefined;
 
   return (
     <section className="space-y-5">
@@ -96,6 +99,10 @@ export default async function EventSellersPage({
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="status-pill bg-green-50 text-green-700">{eventSeller.status}</span>
+                  <Link className="tap-button tap-button-secondary min-h-10 px-3 text-xs" href={`/admin/events/${eventId}/sellers?editSeller=${seller.id}`}>
+                    <Pencil className="size-4" />
+                    Edit
+                  </Link>
                   <DeleteSellerButton
                     sellerId={seller.id}
                     sellerName={seller.company_name}
@@ -128,6 +135,7 @@ export default async function EventSellersPage({
       </div>
 
       {showForm ? <AddSellerModal eventId={eventId} /> : null}
+      {editRow ? <EditEventSellerModal eventId={eventId} seller={editRow.seller} eventSeller={editRow.eventSeller} /> : null}
     </section>
   );
 }
@@ -183,6 +191,70 @@ function AddSellerModal({ eventId }: { eventId: string }) {
 
           <button className="tap-button tap-button-primary min-h-12 w-full md:w-max" type="submit">
             Create Seller and Queue Login Email
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditEventSellerModal({ eventId, seller, eventSeller }: { eventId: string; seller: Seller; eventSeller: EventSeller }) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
+      <div className="tap-card max-h-[92vh] w-full max-w-2xl overflow-y-auto p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black text-ink">Edit Seller</h2>
+            <p className="mt-2 text-slate-600">Update seller account and event booth details.</p>
+          </div>
+          <Link className="tap-button tap-button-secondary" href={`/admin/events/${eventId}/sellers`} aria-label="Close edit seller form">
+            <X className="size-4" />
+          </Link>
+        </div>
+
+        <form action={updateSellerAction} className="mt-5 grid gap-4">
+          <input type="hidden" name="seller_id" value={seller.id} />
+          <input type="hidden" name="event_id" value={eventId} />
+          <input type="hidden" name="redirect_to" value={`/admin/events/${eventId}/sellers`} />
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="tap-label">
+              Seller Name
+              <input className="tap-input" name="seller_name" required defaultValue={seller.company_name} />
+            </label>
+            <label className="tap-label">
+              Contact Name
+              <input className="tap-input" name="contact_name" defaultValue={seller.contact_name || seller.company_name} />
+            </label>
+            <label className="tap-label">
+              Email
+              <input className="tap-input" name="email" required type="email" defaultValue={seller.email} />
+            </label>
+            <label className="tap-label">
+              Phone
+              <input className="tap-input" name="phone" defaultValue={seller.phone} />
+            </label>
+            <label className="tap-label">
+              Booth Number
+              <input className="tap-input" name="booth_number" required defaultValue={eventSeller.booth_number} />
+            </label>
+            <label className="tap-label">
+              Booth Name
+              <input className="tap-input" name="booth_name" defaultValue={eventSeller.booth_name || seller.company_name} />
+            </label>
+            <label className="tap-label">
+              Status
+              <select className="tap-input" name="status" defaultValue={seller.status === "inactive" || eventSeller.status === "inactive" ? "inactive" : "active"}>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </label>
+            <label className="tap-label">
+              Seller Logo
+              <input className="tap-input" name="seller_logo" type="file" accept="image/*" />
+            </label>
+          </div>
+          <button className="tap-button tap-button-primary min-h-12 w-full md:w-max" type="submit">
+            Save Seller
           </button>
         </form>
       </div>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mail, Search } from "lucide-react";
+import { Mail, Pencil, Search } from "lucide-react";
 
 import { listSellerDatabaseRows } from "@/lib/repository";
 
@@ -43,18 +43,26 @@ export default async function SellersDatabasePage({
 
       <div className="tap-card divide-y divide-slate-100 overflow-hidden">
         {rows.map(({ seller }) => (
-          <Link key={seller.id} className="block px-4 py-3 hover:bg-slate-50 active:bg-slate-50" href={`/admin/sellers/${seller.id}`}>
+          <div key={seller.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate font-black text-ink">{seller.company_name}</p>
+                <Link className="truncate font-black text-ink hover:text-cyan-700" href={`/admin/sellers/${seller.id}`}>
+                  {seller.company_name}
+                </Link>
                 <span className="mt-1 flex min-w-0 items-center gap-2 text-sm text-slate-500">
                   <Mail className="size-4 shrink-0 text-cyan-700" />
                   <span className="truncate">{seller.email}</span>
                 </span>
               </div>
-              <span className="status-pill shrink-0 bg-green-50 text-green-700">{seller.status}</span>
             </div>
-          </Link>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="status-pill bg-green-50 text-green-700">{seller.status}</span>
+              <Link className="tap-button tap-button-secondary min-h-10 px-3 text-xs" href={`/admin/sellers/${seller.id}?edit=1`}>
+                <Pencil className="size-4" />
+                Edit
+              </Link>
+            </div>
+          </div>
         ))}
         {rows.length === 0 ? <div className="p-8 text-center text-slate-500">No sellers found.</div> : null}
       </div>

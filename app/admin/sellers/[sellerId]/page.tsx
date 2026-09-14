@@ -1,16 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Pencil, X } from "lucide-react";
 
 import { DeleteSellerButton } from "@/components/DeleteSellerButton";
+import { updateSellerAction } from "@/app/actions";
 import { number, shortDate, time } from "@/lib/format";
 import { getSellerDetail } from "@/lib/repository";
+import type { Seller } from "@/lib/types";
 
 export default async function SellerDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ sellerId: string }>;
+  searchParams: Promise<{ edit?: string; sellerMessage?: string; sellerResult?: string }>;
 }) {
   const { sellerId } = await params;
+  const query = await searchParams;
   const detail = await getSellerDetail(sellerId);
   if (!detail) notFound();
   const { seller, brands, products, events, eventSellers, claims, invite } = detail;
@@ -23,8 +29,23 @@ export default async function SellerDetailPage({
           <Link className="text-sm font-bold text-cyan-700" href="/admin/sellers">
             Back to sellers
           </Link>
-          <DeleteSellerButton sellerId={seller.id} sellerName={seller.company_name} redirectTo="/admin/sellers" />
+          <div className="flex flex-wrap gap-2">
+            <Link className="tap-button tap-button-secondary" href={`/admin/sellers/${seller.id}?edit=1`}>
+              <Pencil className="size-4" />
+              Edit Seller
+            </Link>
+            <DeleteSellerButton sellerId={seller.id} sellerName={seller.company_name} redirectTo="/admin/sellers" />
+          </div>
         </div>
+        {query.sellerMessage ? (
+          <div
+            className={`mt-4 rounded-lg border p-3 text-sm font-bold ${
+              query.sellerResult === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"
+            }`}
+          >
+            {query.sellerMessage}
+          </div>
+        ) : null}
         <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_auto]">
           <div className="flex gap-4">
             {seller.logo_url ? (
@@ -107,7 +128,63 @@ export default async function SellerDetailPage({
           {!claims.length ? <div className="p-6 text-center text-slate-500">No sample claims yet.</div> : null}
         </div>
       </section>
+      {query.edit === "1" ? <EditSellerModal seller={seller} /> : null}
     </section>
+  );
+}
+
+function EditSellerModal({ seller }: { seller: Seller }) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
+      <div className="tap-card max-h-[92vh] w-full max-w-2xl overflow-y-auto p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black text-ink">Edit Seller</h2>
+            <p className="mt-2 text-slate-600">Update seller account details.</p>
+          </div>
+          <Link className="tap-button tap-button-secondary" href={`/admin/sellers/${seller.id}`} aria-label="Close edit seller form">
+            <X className="size-4" />
+          </Link>
+        </div>
+
+        <form action={updateSellerAction} className="mt-5 grid gap-4">
+          <input type="hidden" name="seller_id" value={seller.id} />
+          <input type="hidden" name="redirect_to" value={`/admin/sellers/${seller.id}`} />
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="tap-label">
+              Seller Name
+              <input className="tap-input" name="seller_name" required defaultValue={seller.company_name} />
+            </label>
+            <label className="tap-label">
+              Contact Name
+              <input className="tap-input" name="contact_name" defaultValue={seller.contact_name || seller.company_name} />
+            </label>
+            <label className="tap-label">
+              Email
+              <input className="tap-input" name="email" required type="email" defaultValue={seller.email} />
+            </label>
+            <label className="tap-label">
+              Phone
+              <input className="tap-input" name="phone" defaultValue={seller.phone} />
+            </label>
+            <label className="tap-label">
+              Status
+              <select className="tap-input" name="status" defaultValue={seller.status}>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </label>
+            <label className="tap-label">
+              Seller Logo
+              <input className="tap-input" name="seller_logo" type="file" accept="image/*" />
+            </label>
+          </div>
+          <button className="tap-button tap-button-primary min-h-12 w-full md:w-max" type="submit">
+            Save Seller
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 

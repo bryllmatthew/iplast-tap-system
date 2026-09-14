@@ -147,9 +147,36 @@ export async function checkInCreatorAction(formData: FormData) {
 export async function issueSampleClaimAction(formData: FormData) {
   const eventId = String(formData.get("event_id"));
   const token = String(formData.get("token"));
-  const productId = String(formData.get("product_id"));
-  const quantity = Number(formData.get("quantity") || 1);
-  const result = await issueSampleClaim(eventId, token, productId, quantity);
+  const productIds = Array.from(new Set(formData.getAll("product_id").map((value) => String(value)).filter(Boolean)));
+
+  if (!productIds.length) {
+    const params = new URLSearchParams({
+      token,
+      result: "no_products",
+      message: "Select at least one product sample."
+    });
+    redirect(`/seller/events/${eventId}/scan?${params.toString()}`);
+  }
+
+  const results = [];
+  for (const productId of productIds) {
+    const quantity = Number(formData.get(`quantity_${productId}`) || 1);
+    results.push(await issueSampleClaim(eventId, token, productId, quantity));
+  }
+
+  const claimed = results.filter((result) => result.ok).length;
+  const failed = results.filter((result) => !result.ok);
+  const result = claimed
+    ? {
+        code: "claimed",
+        message: failed.length
+          ? `${claimed} sample product${claimed === 1 ? "" : "s"} claimed. ${failed.length} could not be claimed.`
+          : `${claimed} sample product${claimed === 1 ? "" : "s"} claimed.`
+      }
+    : {
+        code: failed[0]?.code || "claim_failed",
+        message: failed[0]?.message || "No sample products were claimed."
+      };
   const params = new URLSearchParams({
     token,
     result: result.code,

@@ -24,11 +24,13 @@ export function AddSellerProductsTable() {
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-slate-200">
-        <table className="w-full min-w-[680px] text-left">
+        <table className="w-full min-w-[980px] text-left">
           <thead className="bg-slate-50 text-xs font-black uppercase text-slate-500">
             <tr>
               <th className="p-3">Brand</th>
               <th className="p-3">Product</th>
+              <th className="p-3">PID</th>
+              <th className="p-3">Product Link</th>
               <th className="w-32 p-3">Quantity</th>
               <th className="w-16 p-3"> </th>
             </tr>
@@ -41,6 +43,12 @@ export function AddSellerProductsTable() {
                 </td>
                 <td className="p-3">
                   <input className="tap-input" name="product_name" placeholder={index === 0 ? "Vitamin C Serum" : "Product name"} />
+                </td>
+                <td className="p-3">
+                  <input className="tap-input" name="product_pid" placeholder="123456789" />
+                </td>
+                <td className="p-3">
+                  <input className="tap-input" name="product_link" type="url" placeholder="https://..." />
                 </td>
                 <td className="p-3">
                   <input className="tap-input" name="product_quantity" type="number" min={0} placeholder="100" />

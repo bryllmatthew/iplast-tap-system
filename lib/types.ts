@@ -126,6 +126,10 @@ export type Seller = {
   contact_name: string;
   email: string;
   phone: string;
+  shop_code?: string;
+  shop_link?: string;
+  open_plan_commission: number;
+  tap_commission: number;
   logo_url?: string;
   status: "active" | "inactive";
 };
@@ -154,6 +158,8 @@ export type Product = {
   brand_id: string;
   product_name: string;
   sku: string;
+  pid?: string;
+  product_link?: string;
   image_url?: string;
   description: string;
   sample_inventory: number;

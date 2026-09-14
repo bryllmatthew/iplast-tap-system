@@ -64,8 +64,8 @@ export default async function SellerProductsPage({
               <input className="tap-input" name="product_name" required placeholder="Vitamin C Serum" />
             </label>
             <label className="tap-label">
-              SKU
-              <input className="tap-input" name="sku" placeholder="ABC-VITC-30" />
+              PID
+              <input className="tap-input" name="pid" placeholder="123456789" />
             </label>
             <label className="tap-label">
               Sample Inventory
@@ -76,8 +76,12 @@ export default async function SellerProductsPage({
               <input className="tap-input" name="max_claims_per_creator" type="number" min={1} defaultValue={1} />
             </label>
             <label className="tap-label">
-              Image URL
-              <input className="tap-input" name="image_url" placeholder="https://..." />
+              Product Link
+              <input className="tap-input" name="product_link" type="url" placeholder="https://..." />
+            </label>
+            <label className="tap-label">
+              SKU
+              <input className="tap-input" name="sku" placeholder="Optional internal SKU" />
             </label>
             <label className="tap-label md:col-span-2">
               Description
@@ -96,13 +100,14 @@ export default async function SellerProductsPage({
           <p className="mt-2 text-slate-600">Track what is left and what has already been given to creators.</p>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1120px] text-left">
+          <table className="w-full min-w-[1320px] text-left">
             <thead className="bg-slate-50 text-xs font-black uppercase text-slate-500">
               <tr>
                 <th className="p-4">Brand</th>
                 <th className="p-4">Product</th>
                 <th className="p-4">Description</th>
-                <th className="p-4">SKU</th>
+                <th className="p-4">PID</th>
+                <th className="p-4">Product Link</th>
                 <th className="p-4">Initial Inventory</th>
                 <th className="p-4">Given</th>
                 <th className="p-4">Remaining</th>
@@ -124,7 +129,11 @@ export default async function SellerProductsPage({
                     <input className="tap-input min-w-56" form={`product-${product.id}`} name="description" defaultValue={product.description} placeholder="Description" />
                   </td>
                   <td className="p-3">
-                    <input className="tap-input min-w-32" form={`product-${product.id}`} name="sku" defaultValue={product.sku || ""} />
+                    <input className="tap-input min-w-32" form={`product-${product.id}`} name="pid" defaultValue={product.pid || product.sku || ""} />
+                  </td>
+                  <td className="p-3">
+                    <input className="tap-input min-w-56" form={`product-${product.id}`} name="product_link" type="url" defaultValue={product.product_link || ""} placeholder="https://..." />
+                    <input type="hidden" form={`product-${product.id}`} name="sku" value={product.sku || ""} />
                   </td>
                   <td className="p-3">
                     <input className="tap-input min-w-24" form={`product-${product.id}`} name="sample_inventory" type="number" min={0} defaultValue={product.sample_inventory} />

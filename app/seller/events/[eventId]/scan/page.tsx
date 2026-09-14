@@ -2,6 +2,7 @@ import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { issueSampleClaimAction } from "@/app/actions";
 import { QrScanner } from "@/components/QrScanner";
+import { SampleClaimSelector } from "@/components/SampleClaimSelector";
 import { currency, number } from "@/lib/format";
 import { listSellerDashboard, validateQrForSeller } from "@/lib/repository";
 
@@ -89,32 +90,15 @@ export default async function SellerScanPage({
                 </div>
               </div>
 
-              <form action={issueSampleClaimAction} className="space-y-4">
-                <input type="hidden" name="event_id" value={eventId} />
-                <input type="hidden" name="token" value={query.token} />
-                <label className="tap-label">
-                  Select Product
-                  <select className="tap-input" name="product_id" required>
-                    {dashboard.products.map((product) => {
-                      const alreadyClaimed = verified.alreadyClaimedProductIds.includes(product.id);
-                      const eventProduct = dashboard.eventProducts.find((item) => item.product_id === product.id)!;
-                      return (
-                        <option key={product.id} value={product.id} disabled={alreadyClaimed || eventProduct.available_quantity <= 0}>
-                          {product.product_name} - {eventProduct.available_quantity} left
-                          {alreadyClaimed ? " - already claimed" : ""}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
-                <label className="tap-label">
-                  Quantity
-                  <input className="tap-input" min={1} name="quantity" type="number" defaultValue={1} />
-                </label>
-                <button className="tap-button tap-button-primary w-full min-h-14 text-base" type="submit">
-                  Issue Sample
-                </button>
-              </form>
+              <SampleClaimSelector
+                eventId={eventId}
+                token={query.token}
+                brands={dashboard.brands}
+                products={dashboard.products}
+                eventProducts={dashboard.eventProducts}
+                alreadyClaimedProductIds={verified.alreadyClaimedProductIds}
+                action={issueSampleClaimAction}
+              />
             </div>
           )}
         </div>

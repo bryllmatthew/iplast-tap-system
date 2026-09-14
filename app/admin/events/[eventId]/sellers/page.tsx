@@ -116,10 +116,18 @@ export default async function EventSellersPage({
                 <Info label="Booth" value={eventSeller.booth_number} />
                 <Info label="Booth Name" value={eventSeller.booth_name || "-"} />
                 <Info label="Brands" value={number(brands.length)} />
-                <Info label="Products" value={number(products.length)} />
-                <Info label="Given" value={number(issued)} />
-                <Info label="Remaining" value={number(remaining)} />
-              </div>
+              <Info label="Products" value={number(products.length)} />
+              <Info label="Given" value={number(issued)} />
+              <Info label="Remaining" value={number(remaining)} />
+            </div>
+              {(seller.shop_code || seller.shop_link || seller.open_plan_commission || seller.tap_commission) ? (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <Info label="Shop Code" value={seller.shop_code || "-"} />
+                  <Info label="Shop Link" value={seller.shop_link || "-"} />
+                  <Info label="Open Plan Commission" value={`${seller.open_plan_commission}%`} />
+                  <Info label="TAP Commission" value={`${seller.tap_commission}%`} />
+                </div>
+              ) : null}
               {brands.length ? (
                 <div className="mt-4 flex flex-wrap gap-2">
                   {brands.map((brand) => (
@@ -127,6 +135,44 @@ export default async function EventSellersPage({
                       {brand.brand_name}
                     </span>
                   ))}
+                </div>
+              ) : null}
+              {products.length ? (
+                <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200">
+                  <table className="w-full min-w-[760px] text-left text-sm">
+                    <thead className="bg-slate-50 text-xs font-black uppercase text-slate-500">
+                      <tr>
+                        <th className="p-3">Brand</th>
+                        <th className="p-3">Product</th>
+                        <th className="p-3">PID</th>
+                        <th className="p-3">Product Link</th>
+                        <th className="p-3">Remaining</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.map((product) => {
+                        const brand = brands.find((item) => item.id === product.brand_id);
+                        const eventProduct = eventProducts.find((item) => item.product_id === product.id);
+                        return (
+                          <tr key={product.id} className="border-t border-slate-100">
+                            <td className="p-3 text-slate-600">{brand?.brand_name || "-"}</td>
+                            <td className="p-3 font-bold text-ink">{product.product_name}</td>
+                            <td className="p-3 text-slate-600">{product.pid || product.sku || "-"}</td>
+                            <td className="p-3">
+                              {product.product_link ? (
+                                <a className="font-bold text-cyan-700 underline" href={product.product_link} target="_blank" rel="noreferrer">
+                                  Open
+                                </a>
+                              ) : (
+                                <span className="text-slate-500">-</span>
+                              )}
+                            </td>
+                            <td className="p-3 font-black text-cyan-700">{number(eventProduct?.available_quantity || 0)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               ) : null}
             </article>
@@ -172,6 +218,22 @@ function AddSellerModal({ eventId }: { eventId: string }) {
             <label className="tap-label">
               Phone
               <input className="tap-input" name="phone" placeholder="+63917..." />
+            </label>
+            <label className="tap-label">
+              Shop Code
+              <input className="tap-input" name="shop_code" placeholder="TAP-ABC" />
+            </label>
+            <label className="tap-label">
+              Shop Link
+              <input className="tap-input" name="shop_link" type="url" placeholder="https://..." />
+            </label>
+            <label className="tap-label">
+              Open Plan Commission %
+              <input className="tap-input" name="open_plan_commission" type="number" min={0} step="0.01" defaultValue={0} />
+            </label>
+            <label className="tap-label">
+              TAP Commission %
+              <input className="tap-input" name="tap_commission" type="number" min={0} step="0.01" defaultValue={0} />
             </label>
             <label className="tap-label">
               Seller Logo
@@ -232,6 +294,22 @@ function EditEventSellerModal({ eventId, seller, eventSeller }: { eventId: strin
             <label className="tap-label">
               Phone
               <input className="tap-input" name="phone" defaultValue={seller.phone} />
+            </label>
+            <label className="tap-label">
+              Shop Code
+              <input className="tap-input" name="shop_code" defaultValue={seller.shop_code || ""} />
+            </label>
+            <label className="tap-label">
+              Shop Link
+              <input className="tap-input" name="shop_link" type="url" defaultValue={seller.shop_link || ""} />
+            </label>
+            <label className="tap-label">
+              Open Plan Commission %
+              <input className="tap-input" name="open_plan_commission" type="number" min={0} step="0.01" defaultValue={seller.open_plan_commission} />
+            </label>
+            <label className="tap-label">
+              TAP Commission %
+              <input className="tap-input" name="tap_commission" type="number" min={0} step="0.01" defaultValue={seller.tap_commission} />
             </label>
             <label className="tap-label">
               Booth Number

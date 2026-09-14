@@ -226,6 +226,10 @@ export const demoSeller: Seller = {
   contact_name: "Ana Bautista",
   email: "seller@example.com",
   phone: "+639178880000",
+  shop_code: "ABC-TAP",
+  shop_link: "https://example.com/abc",
+  open_plan_commission: 0,
+  tap_commission: 0,
   status: "active"
 };
 
@@ -245,6 +249,8 @@ export const demoProducts: Product[] = [
     brand_id: "bra_abc_beauty",
     product_name: "Vitamin C Serum",
     sku: "ABC-VITC-30",
+    pid: "PID-VITC-30",
+    product_link: "https://example.com/abc/vitamin-c-serum",
     description: "Brightening serum sample.",
     sample_inventory: 100,
     max_claims_per_creator: 1,
@@ -255,6 +261,8 @@ export const demoProducts: Product[] = [
     brand_id: "bra_abc_beauty",
     product_name: "Sunscreen",
     sku: "ABC-SUN-50",
+    pid: "PID-SUN-50",
+    product_link: "https://example.com/abc/sunscreen",
     description: "Daily SPF sample.",
     sample_inventory: 80,
     max_claims_per_creator: 1,
@@ -265,6 +273,8 @@ export const demoProducts: Product[] = [
     brand_id: "bra_abc_beauty",
     product_name: "Collagen Drink",
     sku: "ABC-COL-12",
+    pid: "PID-COL-12",
+    product_link: "https://example.com/abc/collagen-drink",
     description: "Beauty drink sample pack.",
     sample_inventory: 120,
     max_claims_per_creator: 1,

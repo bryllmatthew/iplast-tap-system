@@ -82,6 +82,10 @@ const registrationFieldLabels: Record<string, string> = {
 };
 const eventSelect =
   "id,event_name,event_slug,description,venue,address,event_date,start_time,end_time,registration_start,registration_end,maximum_creator_capacity,poster_url,status";
+const sellerSelect =
+  "id,company_name,contact_name,email,phone,shop_code,shop_link,open_plan_commission,tap_commission,logo_url,status";
+const productSelect =
+  "id,brand_id,product_name,sku,pid,product_link,image_url,description,sample_inventory,max_claims_per_creator,status";
 
 function createServiceClient() {
   const url = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -123,6 +127,10 @@ function sellerFromRow(row: Record<string, unknown>): Seller {
     contact_name: String(row.contact_name || ""),
     email: String(row.email || ""),
     phone: String(row.phone || ""),
+    shop_code: row.shop_code ? String(row.shop_code) : undefined,
+    shop_link: row.shop_link ? String(row.shop_link) : undefined,
+    open_plan_commission: Number(row.open_plan_commission || 0),
+    tap_commission: Number(row.tap_commission || 0),
     logo_url: row.logo_url ? String(row.logo_url) : undefined,
     status: String(row.status || "active") as Seller["status"]
   };
@@ -145,6 +153,8 @@ function productFromRow(row: Record<string, unknown>): Product {
     brand_id: String(row.brand_id),
     product_name: String(row.product_name || ""),
     sku: String(row.sku || ""),
+    pid: row.pid ? String(row.pid) : undefined,
+    product_link: row.product_link ? String(row.product_link) : undefined,
     image_url: row.image_url ? String(row.image_url) : undefined,
     description: String(row.description || ""),
     sample_inventory: Number(row.sample_inventory || 0),
@@ -304,7 +314,7 @@ async function loadDbStateUncached(): Promise<DemoState | null> {
     sellerInvites
   ] = await Promise.all([
     supabase.from("events").select(eventSelect).order("event_date", { ascending: false }),
-    supabase.from("sellers").select("id,company_name,contact_name,email,phone,logo_url,status").order("created_at", { ascending: false }),
+    supabase.from("sellers").select(sellerSelect).order("created_at", { ascending: false }),
     supabase.from("event_sellers").select("id,event_id,seller_id,booth_name,booth_number,status"),
     supabase
       .from("creators")
@@ -315,7 +325,7 @@ async function loadDbStateUncached(): Promise<DemoState | null> {
     supabase.from("event_attendance").select("id,event_id,creator_id,registration_id,status,checked_in_at,checked_in_by"),
     supabase.from("creator_event_qr").select("id,event_id,creator_id,registration_id,attendance_id,qr_token,qr_url,status,generated_at,last_scanned_at"),
     supabase.from("brands").select("id,seller_id,brand_name,logo_url,description,status"),
-    supabase.from("products").select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status"),
+    supabase.from("products").select(productSelect),
     supabase.from("event_products").select("id,event_id,product_id,available_quantity,max_claims_per_creator,status"),
     supabase.from("sample_claims").select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status"),
     supabase.from("seller_invites").select("id,seller_id,email,login_url,temporary_password,created_at,status")
@@ -802,6 +812,10 @@ export async function updateSeller(formData: FormData, logoUrl?: string) {
   const contactName = String(formData.get("contact_name") || sellerName).trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const phone = String(formData.get("phone") || "").trim();
+  const shopCode = String(formData.get("shop_code") || "").trim();
+  const shopLink = String(formData.get("shop_link") || "").trim();
+  const openPlanCommission = Number(formData.get("open_plan_commission") || 0);
+  const tapCommission = Number(formData.get("tap_commission") || 0);
   const status = String(formData.get("status") || "active") === "inactive" ? "inactive" : "active";
   const boothName = String(formData.get("booth_name") || sellerName).trim();
   const boothNumber = String(formData.get("booth_number") || "").trim();
@@ -812,11 +826,15 @@ export async function updateSeller(formData: FormData, logoUrl?: string) {
 
   const supabase = createServiceClient();
   if (supabase) {
-    const updatePayload: Record<string, string> = {
+    const updatePayload: Record<string, string | number | null> = {
       company_name: sellerName,
       contact_name: contactName,
       email,
       phone,
+      shop_code: shopCode || null,
+      shop_link: shopLink || null,
+      open_plan_commission: Number.isFinite(openPlanCommission) ? openPlanCommission : 0,
+      tap_commission: Number.isFinite(tapCommission) ? tapCommission : 0,
       status
     };
     if (logoUrl) updatePayload.logo_url = logoUrl;
@@ -825,7 +843,7 @@ export async function updateSeller(formData: FormData, logoUrl?: string) {
       .from("sellers")
       .update(updatePayload)
       .eq("id", sellerId)
-      .select("id,company_name,contact_name,email,phone,logo_url,status")
+      .select(sellerSelect)
       .maybeSingle();
     if (error) return { ok: false, message: error.message };
     if (!seller) return { ok: false, message: "Seller not found." };
@@ -865,6 +883,10 @@ export async function updateSeller(formData: FormData, logoUrl?: string) {
   seller.contact_name = contactName;
   seller.email = email;
   seller.phone = phone;
+  seller.shop_code = shopCode || undefined;
+  seller.shop_link = shopLink || undefined;
+  seller.open_plan_commission = Number.isFinite(openPlanCommission) ? openPlanCommission : 0;
+  seller.tap_commission = Number.isFinite(tapCommission) ? tapCommission : 0;
   seller.status = status;
   if (logoUrl) seller.logo_url = logoUrl;
 
@@ -913,7 +935,7 @@ export async function listSellerDatabaseRows(query = "") {
   if (supabase) {
     const { data: sellerRows, error } = await supabase
       .from("sellers")
-      .select("id,company_name,contact_name,email,phone,logo_url,status")
+      .select(sellerSelect)
       .order("created_at", { ascending: false });
     if (error) {
       console.error("Failed to load sellers database", error);
@@ -953,7 +975,7 @@ export async function listSellerDatabaseRows(query = "") {
       brandIds.length
         ? supabase
           .from("products")
-          .select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status")
+          .select(productSelect)
           .in("brand_id", brandIds)
         : Promise.resolve({ data: [], error: null }),
       eventSellers.length ? supabase.from("events").select(eventSelect).in("id", unique(eventSellers.map((item) => item.event_id))) : Promise.resolve({ data: [], error: null })
@@ -1029,8 +1051,14 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
   const boothNumber = String(formData.get("booth_number") || "").trim();
   const boothName = String(formData.get("booth_name") || sellerName).trim();
   const password = String(formData.get("password") || "").trim();
+  const shopCode = String(formData.get("shop_code") || "").trim();
+  const shopLink = String(formData.get("shop_link") || "").trim();
+  const openPlanCommission = Number(formData.get("open_plan_commission") || 0);
+  const tapCommission = Number(formData.get("tap_commission") || 0);
   const productBrands = formData.getAll("product_brand").map((value) => String(value).trim());
   const productNames = formData.getAll("product_name").map((value) => String(value).trim());
+  const productPids = formData.getAll("product_pid").map((value) => String(value).trim());
+  const productLinks = formData.getAll("product_link").map((value) => String(value).trim());
   const productQuantities = formData.getAll("product_quantity").map((value) => Number(value || 0));
   const brandNames = unique(productBrands.filter(Boolean));
   if (!brandNames.length) brandNames.push(`${sellerName} Brand`);
@@ -1060,10 +1088,14 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
         contact_name: sellerName,
         email,
         phone: String(formData.get("phone") || "").trim(),
+        shop_code: shopCode || null,
+        shop_link: shopLink || null,
+        open_plan_commission: Number.isFinite(openPlanCommission) ? openPlanCommission : 0,
+        tap_commission: Number.isFinite(tapCommission) ? tapCommission : 0,
         logo_url: logoUrl,
         status: "active"
       })
-      .select("id,company_name,contact_name,email,phone,logo_url,status")
+      .select(sellerSelect)
       .single();
     if (sellerError) return { ok: false, message: sellerError.message };
 
@@ -1106,6 +1138,8 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
           brand_id: brand.id,
           product_name: productName,
           sku: "",
+          pid: productPids[index] || null,
+          product_link: productLinks[index] || null,
           description: "",
           sample_inventory: sampleInventory,
           max_claims_per_creator: 1,
@@ -1153,6 +1187,10 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
     contact_name: sellerName,
     email,
     phone: String(formData.get("phone") || "").trim(),
+    shop_code: shopCode || undefined,
+    shop_link: shopLink || undefined,
+    open_plan_commission: Number.isFinite(openPlanCommission) ? openPlanCommission : 0,
+    tap_commission: Number.isFinite(tapCommission) ? tapCommission : 0,
     logo_url: logoUrl,
     status: "active"
   };
@@ -1196,6 +1234,8 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
       brand_id: brand.id,
       product_name: productName,
       sku: "",
+      pid: productPids[index] || undefined,
+      product_link: productLinks[index] || undefined,
       image_url: undefined,
       description: "",
       sample_inventory: Number.isFinite(quantity) && quantity > 0 ? quantity : 50,
@@ -1269,6 +1309,8 @@ export async function addBrand(formData: FormData) {
 export async function addProduct(formData: FormData) {
   const brandId = String(formData.get("brand_id") || "");
   const productName = String(formData.get("product_name") || "").trim();
+  const pid = String(formData.get("pid") || "").trim();
+  const productLink = String(formData.get("product_link") || "").trim();
   const inventory = Number(formData.get("sample_inventory") || 0);
   const maxClaims = Number(formData.get("max_claims_per_creator") || 1);
 
@@ -1289,13 +1331,15 @@ export async function addProduct(formData: FormData) {
         brand_id: brand.id,
         product_name: productName,
         sku: String(formData.get("sku") || "").trim(),
+        pid: pid || null,
+        product_link: productLink || null,
         image_url: String(formData.get("image_url") || "").trim() || null,
         description: String(formData.get("description") || "").trim(),
         sample_inventory: sampleInventory,
         max_claims_per_creator: maxClaimsPerCreator,
         status: "active"
       })
-      .select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status")
+      .select(productSelect)
       .single();
     if (productError) return { ok: false, message: productError.message };
 
@@ -1326,6 +1370,8 @@ export async function addProduct(formData: FormData) {
     brand_id: brand.id,
     product_name: productName,
     sku: String(formData.get("sku") || "").trim(),
+    pid: pid || undefined,
+    product_link: productLink || undefined,
     image_url: String(formData.get("image_url") || "").trim() || undefined,
     description: String(formData.get("description") || "").trim(),
     sample_inventory: Number.isFinite(inventory) && inventory >= 0 ? inventory : 0,
@@ -1352,6 +1398,8 @@ export async function updateProduct(formData: FormData) {
   const productId = String(formData.get("product_id") || "");
   const productName = String(formData.get("product_name") || "").trim();
   const sku = String(formData.get("sku") || "").trim();
+  const pid = String(formData.get("pid") || "").trim();
+  const productLink = String(formData.get("product_link") || "").trim();
   const description = String(formData.get("description") || "").trim();
   const sampleInventory = Number(formData.get("sample_inventory") || 0);
   const availableQuantity = Number(formData.get("available_quantity") || 0);
@@ -1370,12 +1418,14 @@ export async function updateProduct(formData: FormData) {
       .update({
         product_name: productName,
         sku,
+        pid: pid || null,
+        product_link: productLink || null,
         description,
         sample_inventory: inventory,
         max_claims_per_creator: maxClaimsPerCreator
       })
       .eq("id", productId)
-      .select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status")
+      .select(productSelect)
       .maybeSingle();
     if (error) return { ok: false, message: error.message };
     if (!product) return { ok: false, message: "Product not found." };
@@ -1398,6 +1448,8 @@ export async function updateProduct(formData: FormData) {
 
   product.product_name = productName;
   product.sku = sku;
+  product.pid = pid || undefined;
+  product.product_link = productLink || undefined;
   product.description = description;
   product.sample_inventory = inventory;
   product.max_claims_per_creator = maxClaimsPerCreator;
@@ -1670,10 +1722,10 @@ export async function getCreatorDetail(creatorId: string) {
       claims.length
         ? supabase
           .from("products")
-          .select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status")
+          .select(productSelect)
           .in("id", unique(claims.map((claim) => claim.product_id)))
         : Promise.resolve({ data: [], error: null }),
-      claims.length ? supabase.from("sellers").select("id,company_name,contact_name,email,phone,logo_url,status").in("id", unique(claims.map((claim) => claim.seller_id))) : Promise.resolve({ data: [], error: null })
+      claims.length ? supabase.from("sellers").select(sellerSelect).in("id", unique(claims.map((claim) => claim.seller_id))) : Promise.resolve({ data: [], error: null })
     ]);
 
     const claimEvents = mapById((claimEventsResult.data || []).map(eventFromRow));
@@ -2134,6 +2186,10 @@ export async function validateQrForSeller(eventId: string, token: string): Promi
 }
 
 export async function issueSampleClaim(eventId: string, token: string, productId: string, quantity: number) {
+  if (!Number.isFinite(quantity) || quantity < 1) {
+    return { ok: false, code: "invalid_quantity", message: "Quantity must be at least 1." };
+  }
+
   const supabase = createServiceClient();
   if (supabase) {
     const verified = await validateQrForSeller(eventId, token);
@@ -2243,7 +2299,7 @@ export async function listSellerDashboard(eventId?: string) {
   if (supabase) {
     const { data: sellerRow, error: sellerError } = await supabase
       .from("sellers")
-      .select("id,company_name,contact_name,email,phone,logo_url,status")
+      .select(sellerSelect)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -2293,7 +2349,7 @@ export async function listSellerDashboard(eventId?: string) {
       brandIds.length
         ? supabase
           .from("products")
-          .select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status")
+          .select(productSelect)
           .in("brand_id", brandIds)
         : Promise.resolve({ data: [], error: null }),
       eventSellerQuery.limit(1),
@@ -2386,7 +2442,7 @@ export async function getClaimRows(eventId?: string) {
       supabase.from("brands").select("id,seller_id,brand_name,logo_url,description,status").in("id", unique(claims.map((claim) => claim.brand_id))),
       supabase
         .from("products")
-        .select("id,brand_id,product_name,sku,image_url,description,sample_inventory,max_claims_per_creator,status")
+        .select(productSelect)
         .in("id", unique(claims.map((claim) => claim.product_id)))
     ]);
 

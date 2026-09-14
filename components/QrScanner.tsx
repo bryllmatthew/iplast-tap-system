@@ -23,51 +23,61 @@ function extractToken(value: string) {
 
 export function QrScanner({ eventId }: QrScannerProps) {
   const router = useRouter();
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const scannerId = useRef(`tap-qr-scanner-${Math.random().toString(36).slice(2)}`);
+  const scannerRef = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(null);
   const [manual, setManual] = useState("");
   const [cameraState, setCameraState] = useState<"idle" | "starting" | "active" | "unsupported" | "error">("idle");
 
   useEffect(() => {
     return () => {
-      streamRef.current?.getTracks().forEach((track) => track.stop());
+      scannerRef.current?.stop().catch(() => undefined);
+      try {
+        scannerRef.current?.clear();
+      } catch {
+        // Ignore scanner cleanup errors on unmount.
+      }
     };
   }, []);
 
   async function openCamera() {
-    if (!("BarcodeDetector" in window)) {
-      setCameraState("unsupported");
-      return;
-    }
-
     setCameraState("starting");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+      const { Html5Qrcode } = await import("html5-qrcode");
+      await scannerRef.current?.stop().catch(() => undefined);
+      scannerRef.current?.clear();
+
+      const scanner = new Html5Qrcode(scannerId.current, { verbose: false });
+      scannerRef.current = scanner;
       setCameraState("active");
-
-      const Detector = (window as unknown as { BarcodeDetector: new (options: { formats: string[] }) => { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> } }).BarcodeDetector;
-      const detector = new Detector({ formats: ["qr_code"] });
-
-      const scan = async () => {
-        if (!videoRef.current || cameraState === "error") return;
-        const codes = await detector.detect(videoRef.current).catch(() => []);
-        const value = codes[0]?.rawValue;
-        if (value) {
-          stream.getTracks().forEach((track) => track.stop());
+      await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 260, height: 260 } },
+        async (value) => {
+          await scanner.stop().catch(() => undefined);
+          scanner.clear();
           router.push(`/seller/events/${eventId}/scan?token=${encodeURIComponent(extractToken(value))}`);
-          return;
-        }
-        window.setTimeout(scan, 350);
-      };
-      window.setTimeout(scan, 500);
-    } catch {
-      setCameraState("error");
+        },
+        () => undefined
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      if (message.includes("notfound") || message.includes("not supported")) {
+        setCameraState("unsupported");
+      } else {
+        setCameraState("error");
+      }
+      try {
+        scannerRef.current?.clear();
+      } catch {
+        // Ignore scanner cleanup errors after failed camera start.
+      }
     }
+  }
+
+  async function stopCamera() {
+    await scannerRef.current?.stop().catch(() => undefined);
+    scannerRef.current?.clear();
+    setCameraState("idle");
   }
 
   function submitManual() {
@@ -82,12 +92,14 @@ export function QrScanner({ eventId }: QrScannerProps) {
         Scan QR with Camera
       </button>
 
-      <video
-        ref={videoRef}
-        className={`aspect-square w-full rounded-lg bg-ink object-cover sm:aspect-video ${cameraState === "active" ? "block" : "hidden"}`}
-        muted
-        playsInline
-      />
+      <div className={`overflow-hidden rounded-lg bg-ink ${cameraState === "active" || cameraState === "starting" ? "block" : "hidden"}`}>
+        <div id={scannerId.current} className="min-h-72 w-full [&_video]:!w-full [&_video]:rounded-lg" />
+        {cameraState === "active" ? (
+          <button className="tap-button tap-button-secondary m-3 min-h-10 w-[calc(100%-1.5rem)]" type="button" onClick={stopCamera}>
+            Stop Camera
+          </button>
+        ) : null}
+      </div>
 
       {cameraState === "unsupported" ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">

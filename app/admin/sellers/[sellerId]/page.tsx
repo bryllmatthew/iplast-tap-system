@@ -69,6 +69,12 @@ export default async function SellerDetailPage({
             <Metric label="Samples" value={number(issued)} />
           </div>
         </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric label="Shop Code" value={seller.shop_code || "-"} />
+          <Metric label="Shop Link" value={seller.shop_link || "-"} />
+          <Metric label="Open Plan Commission" value={`${seller.open_plan_commission}%`} />
+          <Metric label="TAP Commission" value={`${seller.tap_commission}%`} />
+        </div>
         {invite ? <p className="mt-4 text-xs font-bold text-slate-500">Login invite: {invite.status} - {invite.email}</p> : null}
       </div>
 
@@ -104,8 +110,13 @@ export default async function SellerDetailPage({
                   {brandProducts.map((product) => (
                     <div key={product.id} className="rounded-lg border border-slate-200 p-3">
                       <p className="font-bold text-ink">{product.product_name}</p>
-                      <p className="mt-1 text-xs text-slate-500">{product.sku || "No SKU"}</p>
+                      <p className="mt-1 text-xs text-slate-500">{product.pid || product.sku || "No PID"}</p>
                       <p className="mt-2 text-sm text-slate-600">Inventory: {number(product.sample_inventory)}</p>
+                      {product.product_link ? (
+                        <a className="mt-2 inline-flex text-sm font-bold text-cyan-700 underline" href={product.product_link} target="_blank" rel="noreferrer">
+                          Product link
+                        </a>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -166,6 +177,22 @@ function EditSellerModal({ seller }: { seller: Seller }) {
             <label className="tap-label">
               Phone
               <input className="tap-input" name="phone" defaultValue={seller.phone} />
+            </label>
+            <label className="tap-label">
+              Shop Code
+              <input className="tap-input" name="shop_code" defaultValue={seller.shop_code || ""} />
+            </label>
+            <label className="tap-label">
+              Shop Link
+              <input className="tap-input" name="shop_link" type="url" defaultValue={seller.shop_link || ""} />
+            </label>
+            <label className="tap-label">
+              Open Plan Commission %
+              <input className="tap-input" name="open_plan_commission" type="number" min={0} step="0.01" defaultValue={seller.open_plan_commission} />
+            </label>
+            <label className="tap-label">
+              TAP Commission %
+              <input className="tap-input" name="tap_commission" type="number" min={0} step="0.01" defaultValue={seller.tap_commission} />
             </label>
             <label className="tap-label">
               Status

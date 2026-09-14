@@ -40,6 +40,20 @@ textarea {
   margin: 0 auto;
 }
 
+.tap-app-shell {
+  width: min(1200px, calc(100vw - 32px));
+  margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+  .tap-app-shell {
+    width: calc(100vw - 32px);
+    max-width: 1760px;
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+}
+
 .tap-card {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;

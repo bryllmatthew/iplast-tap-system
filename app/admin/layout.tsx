@@ -24,7 +24,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   await requireAuth("admin");
 
   return (
-    <main className="tap-shell grid gap-5 pb-24 pt-4 lg:grid-cols-[220px_1fr] lg:py-6">
+    <main className="tap-app-shell grid gap-5 pb-24 pt-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:py-6">
       <div className="tap-card col-span-full flex min-h-14 items-center justify-between gap-4 px-4">
         <Link href="/admin" className="font-black text-ink">
           iPlast TAP System

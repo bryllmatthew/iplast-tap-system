@@ -1583,13 +1583,24 @@ export async function updateProduct(formData: FormData) {
     if (error) return { ok: false, message: error.message };
     if (!product) return { ok: false, message: "Product not found." };
 
+    const updatedProduct = productFromRow(product);
+    const { data: brand, error: brandError } = await supabase.from("brands").select("seller_id").eq("id", updatedProduct.brand_id).maybeSingle();
+    if (brandError) return { ok: false, message: brandError.message };
+
+    const { data: assignedEvents, error: assignedEventsError } = brand
+      ? await supabase.from("event_sellers").select("event_id").eq("seller_id", brand.seller_id)
+      : { data: [], error: null };
+    if (assignedEventsError) return { ok: false, message: assignedEventsError.message };
+    const assignedEventIds = (assignedEvents || []).map((item) => String(item.event_id));
+
     const { data: eventProducts, error: eventProductsLoadError } = await supabase
       .from("event_products")
-      .select("id,available_quantity")
+      .select("id,event_id,available_quantity")
       .eq("product_id", productId);
     if (eventProductsLoadError) return { ok: false, message: eventProductsLoadError.message };
 
     for (const eventProduct of eventProducts || []) {
+      if (assignedEventIds.length && !assignedEventIds.includes(String(eventProduct.event_id))) continue;
       const { error: eventProductError } = await supabase
         .from("event_products")
         .update({
@@ -1600,7 +1611,22 @@ export async function updateProduct(formData: FormData) {
       if (eventProductError) return { ok: false, message: eventProductError.message };
     }
 
-    return { ok: true, message: "Product updated.", product: productFromRow(product) };
+    const existingEventIds = new Set((eventProducts || []).map((eventProduct) => String(eventProduct.event_id)));
+    const missingEventProducts = assignedEventIds
+      .filter((eventId) => !existingEventIds.has(eventId))
+      .map((eventId) => ({
+        event_id: eventId,
+        product_id: productId,
+        available_quantity: adjustedInventory,
+        max_claims_per_creator: maxClaimsPerCreator,
+        status: "active"
+      }));
+    if (missingEventProducts.length) {
+      const { error: insertEventProductsError } = await supabase.from("event_products").insert(missingEventProducts);
+      if (insertEventProductsError) return { ok: false, message: insertEventProductsError.message };
+    }
+
+    return { ok: true, message: "Product updated.", product: updatedProduct };
   }
 
   const s = state();
@@ -1614,14 +1640,81 @@ export async function updateProduct(formData: FormData) {
   product.description = description;
   product.sample_inventory = adjustedInventory;
   product.max_claims_per_creator = maxClaimsPerCreator;
+  const brand = s.brands.find((item) => item.id === product.brand_id);
+  const assignedEventIds = brand ? s.eventSellers.filter((item) => item.seller_id === brand.seller_id).map((item) => item.event_id) : [];
   s.eventProducts
-    .filter((item) => item.product_id === productId)
+    .filter((item) => item.product_id === productId && (!assignedEventIds.length || assignedEventIds.includes(item.event_id)))
     .forEach((item) => {
       item.available_quantity += addRemaining;
       item.max_claims_per_creator = maxClaimsPerCreator;
     });
+  const existingEventIds = new Set(s.eventProducts.filter((item) => item.product_id === productId).map((item) => item.event_id));
+  for (const eventId of assignedEventIds) {
+    if (existingEventIds.has(eventId)) continue;
+    s.eventProducts.unshift({
+      id: uid("evp"),
+      event_id: eventId,
+      product_id: product.id,
+      available_quantity: adjustedInventory,
+      max_claims_per_creator: maxClaimsPerCreator,
+      status: "active"
+    });
+  }
 
   return { ok: true, message: "Product updated.", product };
+}
+
+export async function updateEventProductInventory(formData: FormData) {
+  const eventId = String(formData.get("event_id") || "");
+  const productId = String(formData.get("product_id") || "");
+  const eventProductId = String(formData.get("event_product_id") || "");
+  const availableValue = Number(formData.get("available_quantity") || 0);
+  const maxClaimsValue = Number(formData.get("max_claims_per_creator") || 1);
+  const availableQuantity = Number.isFinite(availableValue) && availableValue >= 0 ? availableValue : 0;
+  const maxClaimsPerCreator = Number.isFinite(maxClaimsValue) && maxClaimsValue > 0 ? maxClaimsValue : 1;
+
+  if (!eventId || !productId) return { ok: false, message: "Event and product are required." };
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    const payload = {
+      event_id: eventId,
+      product_id: productId,
+      available_quantity: availableQuantity,
+      max_claims_per_creator: maxClaimsPerCreator,
+      status: "active"
+    };
+
+    const result = eventProductId
+      ? await supabase.from("event_products").update(payload).eq("id", eventProductId).select("id").maybeSingle()
+      : await supabase.from("event_products").upsert(payload, { onConflict: "event_id,product_id" }).select("id").maybeSingle();
+    if (result.error) return { ok: false, message: result.error.message };
+
+    await supabase.from("products").update({ max_claims_per_creator: maxClaimsPerCreator }).eq("id", productId);
+    return { ok: true, message: "Event product inventory updated." };
+  }
+
+  const s = state();
+  let eventProduct = s.eventProducts.find((item) => item.id === eventProductId) || s.eventProducts.find((item) => item.event_id === eventId && item.product_id === productId);
+  if (!eventProduct) {
+    eventProduct = {
+      id: uid("evp"),
+      event_id: eventId,
+      product_id: productId,
+      available_quantity: availableQuantity,
+      max_claims_per_creator: maxClaimsPerCreator,
+      status: "active"
+    };
+    s.eventProducts.unshift(eventProduct);
+  } else {
+    eventProduct.available_quantity = availableQuantity;
+    eventProduct.max_claims_per_creator = maxClaimsPerCreator;
+    eventProduct.status = "active";
+  }
+
+  const product = s.products.find((item) => item.id === productId);
+  if (product) product.max_claims_per_creator = maxClaimsPerCreator;
+  return { ok: true, message: "Event product inventory updated." };
 }
 
 export async function getAdminOverview() {

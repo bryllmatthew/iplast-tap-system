@@ -21,6 +21,7 @@ import {
   submitRegistration,
   updateSeller,
   updateProduct,
+  updateEventProductInventory,
   updateEventBanner
 } from "@/lib/repository";
 import { ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, requireAuth, userHasRole } from "@/lib/auth";
@@ -426,5 +427,28 @@ export async function updateProductAction(formData: FormData) {
   });
   revalidatePath("/seller");
   revalidatePath("/seller/products");
+  revalidatePath("/seller/events");
+  revalidatePath("/seller/scan");
+  revalidatePath("/admin/events");
   redirect(`/seller/products?${params.toString()}`);
+}
+
+export async function updateEventProductInventoryAction(formData: FormData) {
+  await requireAuth("admin");
+
+  const eventId = String(formData.get("event_id") || "");
+  const result = await updateEventProductInventory(formData);
+  const params = new URLSearchParams({
+    message: result.message,
+    result: result.ok ? "success" : "error"
+  });
+
+  revalidatePath(`/admin/events/${eventId}`);
+  revalidatePath(`/admin/events/${eventId}/products`);
+  revalidatePath(`/admin/events/${eventId}/sellers`);
+  revalidatePath("/seller");
+  revalidatePath("/seller/products");
+  revalidatePath("/seller/events");
+  revalidatePath("/seller/scan");
+  redirect(`/admin/events/${eventId}/products?${params.toString()}`);
 }

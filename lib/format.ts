@@ -10,10 +10,15 @@ export function number(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
 }
 
+const philippineTimeZone = "Asia/Manila";
+
 export function shortDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(
-    new Date(value)
-  );
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: philippineTimeZone
+  }).format(new Date(value));
 }
 
 export function eventTimeRange(startTime: string, endTime: string) {
@@ -29,7 +34,14 @@ function formatClockTime(value: string) {
 }
 
 export function time(value: string) {
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(value));
+  const formattedTime = new Intl.DateTimeFormat("en-PH", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: philippineTimeZone
+  }).format(new Date(value));
+
+  return `${formattedTime} PHT`;
 }
 
 export function initials(name: string) {

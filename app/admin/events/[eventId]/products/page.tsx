@@ -19,7 +19,15 @@ export default async function EventProductsPage({
       product,
       eventProduct: eventProducts.find((item) => item.product_id === product.id)
     }))
-  );
+  ).sort((a, b) => {
+    const sellerCompare = a.seller.company_name.localeCompare(b.seller.company_name, undefined, { sensitivity: "base" });
+    if (sellerCompare !== 0) return sellerCompare;
+
+    const brandCompare = (a.brand?.brand_name || "").localeCompare(b.brand?.brand_name || "", undefined, { sensitivity: "base" });
+    if (brandCompare !== 0) return brandCompare;
+
+    return a.product.product_name.localeCompare(b.product.product_name, undefined, { sensitivity: "base" });
+  });
 
   return (
     <section className="tap-card overflow-hidden">

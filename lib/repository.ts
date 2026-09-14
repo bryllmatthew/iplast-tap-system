@@ -1554,13 +1554,14 @@ export async function updateProduct(formData: FormData) {
   const productLink = String(formData.get("product_link") || "").trim();
   const description = String(formData.get("description") || "").trim();
   const sampleInventory = Number(formData.get("sample_inventory") || 0);
-  const availableQuantity = Number(formData.get("available_quantity") || 0);
+  const addRemainingQuantity = Number(formData.get("add_remaining_quantity") || 0);
   const maxClaims = Number(formData.get("max_claims_per_creator") || 1);
 
   if (!productId || !productName) return { ok: false, message: "Product name is required." };
 
   const inventory = Number.isFinite(sampleInventory) && sampleInventory >= 0 ? sampleInventory : 0;
-  const available = Number.isFinite(availableQuantity) && availableQuantity >= 0 ? availableQuantity : 0;
+  const addRemaining = Number.isFinite(addRemainingQuantity) && addRemainingQuantity > 0 ? addRemainingQuantity : 0;
+  const adjustedInventory = inventory + addRemaining;
   const maxClaimsPerCreator = Number.isFinite(maxClaims) && maxClaims > 0 ? maxClaims : 1;
   const supabase = createServiceClient();
 
@@ -1573,7 +1574,7 @@ export async function updateProduct(formData: FormData) {
         pid: pid || null,
         product_link: productLink || null,
         description,
-        sample_inventory: inventory,
+        sample_inventory: adjustedInventory,
         max_claims_per_creator: maxClaimsPerCreator
       })
       .eq("id", productId)
@@ -1582,14 +1583,22 @@ export async function updateProduct(formData: FormData) {
     if (error) return { ok: false, message: error.message };
     if (!product) return { ok: false, message: "Product not found." };
 
-    const { error: eventProductError } = await supabase
+    const { data: eventProducts, error: eventProductsLoadError } = await supabase
       .from("event_products")
-      .update({
-        available_quantity: available,
-        max_claims_per_creator: maxClaimsPerCreator
-      })
+      .select("id,available_quantity")
       .eq("product_id", productId);
-    if (eventProductError) return { ok: false, message: eventProductError.message };
+    if (eventProductsLoadError) return { ok: false, message: eventProductsLoadError.message };
+
+    for (const eventProduct of eventProducts || []) {
+      const { error: eventProductError } = await supabase
+        .from("event_products")
+        .update({
+          available_quantity: Number(eventProduct.available_quantity || 0) + addRemaining,
+          max_claims_per_creator: maxClaimsPerCreator
+        })
+        .eq("id", eventProduct.id);
+      if (eventProductError) return { ok: false, message: eventProductError.message };
+    }
 
     return { ok: true, message: "Product updated.", product: productFromRow(product) };
   }
@@ -1603,12 +1612,12 @@ export async function updateProduct(formData: FormData) {
   product.pid = pid || undefined;
   product.product_link = productLink || undefined;
   product.description = description;
-  product.sample_inventory = inventory;
+  product.sample_inventory = adjustedInventory;
   product.max_claims_per_creator = maxClaimsPerCreator;
   s.eventProducts
     .filter((item) => item.product_id === productId)
     .forEach((item) => {
-      item.available_quantity = available;
+      item.available_quantity += addRemaining;
       item.max_claims_per_creator = maxClaimsPerCreator;
     });
 

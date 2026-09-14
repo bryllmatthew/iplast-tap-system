@@ -100,7 +100,7 @@ export default async function SellerProductsPage({
           <p className="mt-2 text-slate-600">Track what is left and what has already been given to creators.</p>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1320px] text-left">
+          <table className="w-full min-w-[1420px] text-left">
             <thead className="bg-slate-50 text-xs font-black uppercase text-slate-500">
               <tr>
                 <th className="p-4">Brand</th>
@@ -111,6 +111,7 @@ export default async function SellerProductsPage({
                 <th className="p-4">Initial Inventory</th>
                 <th className="p-4">Given</th>
                 <th className="p-4">Remaining</th>
+                <th className="p-4">Add Samples</th>
                 <th className="p-4">Limit Per Creator</th>
                 <th className="p-4">Action</th>
               </tr>
@@ -139,8 +140,9 @@ export default async function SellerProductsPage({
                     <input className="tap-input min-w-24" form={`product-${product.id}`} name="sample_inventory" type="number" min={0} defaultValue={product.sample_inventory} />
                   </td>
                   <td className="p-3 font-black text-cyan-700">{number(issued)}</td>
+                  <td className="p-3 font-black text-ink">{number(remaining)}</td>
                   <td className="p-3">
-                    <input className="tap-input min-w-24" form={`product-${product.id}`} name="available_quantity" type="number" min={0} defaultValue={remaining} />
+                    <input className="tap-input min-w-24" form={`product-${product.id}`} name="add_remaining_quantity" type="number" min={0} defaultValue={0} />
                   </td>
                   <td className="p-3">
                     <input className="tap-input min-w-24" form={`product-${product.id}`} name="max_claims_per_creator" type="number" min={1} defaultValue={product.max_claims_per_creator} />

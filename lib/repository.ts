@@ -1087,6 +1087,115 @@ export async function getSellerDetail(sellerId: string) {
   return rows.find((row) => row.seller.id === sellerId) || null;
 }
 
+export async function addExistingSellerToEvent(formData: FormData) {
+  const eventId = String(formData.get("event_id") || "");
+  const sellerId = String(formData.get("seller_id") || "");
+  const boothNumber = String(formData.get("booth_number") || "").trim();
+  const boothName = String(formData.get("booth_name") || "").trim();
+
+  if (!eventId || !sellerId || !boothNumber) {
+    return { ok: false, message: "Seller, event, and booth number are required." };
+  }
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    if (!(await getEventById(eventId))) return { ok: false, message: "Event not found." };
+
+    const { data: seller, error: sellerError } = await supabase.from("sellers").select(sellerSelect).eq("id", sellerId).maybeSingle();
+    if (sellerError) return { ok: false, message: sellerError.message };
+    if (!seller) return { ok: false, message: "Seller not found." };
+
+    const { data: existingSeller, error: existingSellerError } = await supabase
+      .from("event_sellers")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("seller_id", sellerId)
+      .limit(1);
+    if (existingSellerError) return { ok: false, message: existingSellerError.message };
+    if (existingSeller?.length) return { ok: false, message: "This seller is already assigned to this event." };
+
+    const { data: boothConflict, error: boothError } = await supabase
+      .from("event_sellers")
+      .select("id")
+      .eq("event_id", eventId)
+      .ilike("booth_number", boothNumber)
+      .limit(1);
+    if (boothError) return { ok: false, message: boothError.message };
+    if (boothConflict?.length) return { ok: false, message: "That booth number is already assigned for this event." };
+
+    const sellerRow = sellerFromRow(seller);
+    const { error: eventSellerError } = await supabase.from("event_sellers").insert({
+      event_id: eventId,
+      seller_id: sellerId,
+      booth_name: boothName || sellerRow.company_name,
+      booth_number: boothNumber,
+      status: "active"
+    });
+    if (eventSellerError) return { ok: false, message: eventSellerError.message };
+
+    const { data: brands, error: brandsError } = await supabase.from("brands").select("id").eq("seller_id", sellerId);
+    if (brandsError) return { ok: false, message: brandsError.message };
+    const brandIds = (brands || []).map((brand) => String(brand.id));
+
+    if (brandIds.length) {
+      const { data: products, error: productsError } = await supabase.from("products").select(productSelect).in("brand_id", brandIds);
+      if (productsError) return { ok: false, message: productsError.message };
+      const eventProducts = (products || []).map((product) => {
+        const parsed = productFromRow(product);
+        return {
+          event_id: eventId,
+          product_id: parsed.id,
+          available_quantity: parsed.sample_inventory,
+          max_claims_per_creator: parsed.max_claims_per_creator,
+          status: "active"
+        };
+      });
+      if (eventProducts.length) {
+        const { error: eventProductsError } = await supabase.from("event_products").upsert(eventProducts, { onConflict: "event_id,product_id" });
+        if (eventProductsError) return { ok: false, message: eventProductsError.message };
+      }
+    }
+
+    return { ok: true, message: `${sellerRow.company_name} added to this event.` };
+  }
+
+  const s = state();
+  if (!s.events.some((event) => event.id === eventId)) return { ok: false, message: "Event not found." };
+  const seller = s.sellers.find((item) => item.id === sellerId);
+  if (!seller) return { ok: false, message: "Seller not found." };
+  if (s.eventSellers.some((eventSeller) => eventSeller.event_id === eventId && eventSeller.seller_id === sellerId)) {
+    return { ok: false, message: "This seller is already assigned to this event." };
+  }
+  if (s.eventSellers.some((eventSeller) => eventSeller.event_id === eventId && eventSeller.booth_number.toLowerCase() === boothNumber.toLowerCase())) {
+    return { ok: false, message: "That booth number is already assigned for this event." };
+  }
+
+  s.eventSellers.unshift({
+    id: uid("evs"),
+    event_id: eventId,
+    seller_id: seller.id,
+    booth_name: boothName || seller.company_name,
+    booth_number: boothNumber,
+    status: "active"
+  });
+
+  const brandIds = s.brands.filter((brand) => brand.seller_id === seller.id).map((brand) => brand.id);
+  const products = s.products.filter((product) => brandIds.includes(product.brand_id));
+  for (const product of products) {
+    if (s.eventProducts.some((eventProduct) => eventProduct.event_id === eventId && eventProduct.product_id === product.id)) continue;
+    s.eventProducts.unshift({
+      id: uid("evp"),
+      event_id: eventId,
+      product_id: product.id,
+      available_quantity: product.sample_inventory,
+      max_claims_per_creator: product.max_claims_per_creator,
+      status: "active"
+    });
+  }
+
+  return { ok: true, message: `${seller.company_name} added to this event.` };
+}
+
 export async function addEventSeller(formData: FormData, logoUrl?: string) {
   const eventId = String(formData.get("event_id") || "");
   const sellerName = String(formData.get("seller_name") || "").trim();

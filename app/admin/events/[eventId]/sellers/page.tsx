@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { Mail, Pencil, Plus, X } from "lucide-react";
+import { Mail, Pencil, Plus, Search, UserPlus, X } from "lucide-react";
 
-import { addEventSellerAction, updateSellerAction } from "@/app/actions";
+import { addEventSellerAction, addExistingSellerToEventAction, updateSellerAction } from "@/app/actions";
 import { AddSellerProductsTable } from "@/components/AddSellerProductsTable";
 import { DeleteSellerButton } from "@/components/DeleteSellerButton";
 import { number } from "@/lib/format";
-import { getEventById, listEventSellerRows } from "@/lib/repository";
+import { getEventById, listEventSellerRows, listSellerDatabaseRows } from "@/lib/repository";
 import type { EventSeller, Seller } from "@/lib/types";
 
 export default async function EventSellersPage({
@@ -21,6 +21,8 @@ export default async function EventSellersPage({
     invitePassword?: string;
     inviteLogin?: string;
     editSeller?: string;
+    addExisting?: string;
+    sellerSearch?: string;
   }>;
 }) {
   const { eventId } = await params;
@@ -28,6 +30,9 @@ export default async function EventSellersPage({
   const event = await getEventById(eventId);
   const rows = await listEventSellerRows(eventId);
   const showForm = query.addSeller === "1";
+  const showExistingForm = query.addExisting === "1";
+  const existingSellerRows = showExistingForm ? await listSellerDatabaseRows(query.sellerSearch || "") : [];
+  const assignedSellerIds = new Set(rows.map(({ seller }) => seller.id));
   const editRow = query.editSeller ? rows.find(({ seller }) => seller.id === query.editSeller) : undefined;
 
   return (
@@ -40,10 +45,16 @@ export default async function EventSellersPage({
               Assign sellers, booth numbers, product brands, and sample inventory for {event?.event_name || "this event"}.
             </p>
           </div>
-          <Link className="tap-button tap-button-primary" href={`/admin/events/${eventId}/sellers?addSeller=1`}>
-            <Plus className="size-4" />
-            Add Seller
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link className="tap-button tap-button-secondary" href={`/admin/events/${eventId}/sellers?addExisting=1`}>
+              <UserPlus className="size-4" />
+              Add Existing Seller
+            </Link>
+            <Link className="tap-button tap-button-primary" href={`/admin/events/${eventId}/sellers?addSeller=1`}>
+              <Plus className="size-4" />
+              Add New Seller
+            </Link>
+          </div>
         </div>
         {query.sellerMessage ? (
           <div
@@ -181,8 +192,94 @@ export default async function EventSellersPage({
       </div>
 
       {showForm ? <AddSellerModal eventId={eventId} /> : null}
+      {showExistingForm ? (
+        <AddExistingSellerModal
+          eventId={eventId}
+          sellers={existingSellerRows.filter(({ seller }) => !assignedSellerIds.has(seller.id))}
+          sellerSearch={query.sellerSearch || ""}
+        />
+      ) : null}
       {editRow ? <EditEventSellerModal eventId={eventId} seller={editRow.seller} eventSeller={editRow.eventSeller} /> : null}
     </section>
+  );
+}
+
+function AddExistingSellerModal({
+  eventId,
+  sellers,
+  sellerSearch
+}: {
+  eventId: string;
+  sellers: Awaited<ReturnType<typeof listSellerDatabaseRows>>;
+  sellerSearch: string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
+      <div className="tap-card max-h-[92vh] w-full max-w-3xl overflow-y-auto p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black text-ink">Add Existing Seller</h2>
+            <p className="mt-2 text-slate-600">Choose a seller from the database, assign a booth, and attach their current products to this event.</p>
+          </div>
+          <Link className="tap-button tap-button-secondary" href={`/admin/events/${eventId}/sellers`} aria-label="Close existing seller form">
+            <X className="size-4" />
+          </Link>
+        </div>
+
+        <form className="mt-5 flex flex-wrap gap-2" action={`/admin/events/${eventId}/sellers`} method="get">
+          <input type="hidden" name="addExisting" value="1" />
+          <label className="tap-label min-w-0 flex-1">
+            Search Seller
+            <input className="tap-input" name="sellerSearch" defaultValue={sellerSearch} placeholder="Seller name, email, brand, or event" />
+          </label>
+          <button className="tap-button tap-button-secondary self-end" type="submit">
+            <Search className="size-4" />
+            Search
+          </button>
+        </form>
+
+        <form action={addExistingSellerToEventAction} className="mt-5 grid gap-4">
+          <input type="hidden" name="event_id" value={eventId} />
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="tap-label md:col-span-2">
+              Seller
+              <select className="tap-input" name="seller_id" required defaultValue="">
+                <option value="" disabled>
+                  Select seller
+                </option>
+                {sellers.map(({ seller, brands, products }) => (
+                  <option key={seller.id} value={seller.id}>
+                    {seller.company_name} - {seller.email || "No email"} - {brands.length} brands / {products.length} products
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="tap-label">
+              Booth Number
+              <input className="tap-input" name="booth_number" required placeholder="Booth 12" />
+            </label>
+            <label className="tap-label">
+              Booth Name
+              <input className="tap-input" name="booth_name" placeholder="Seller booth name" />
+            </label>
+          </div>
+
+          {sellers.length ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-600">
+              Existing products will be added to this event using each product&apos;s current sample inventory and limit per creator.
+            </div>
+          ) : (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">
+              No available sellers found. Try another search or create a new seller.
+            </div>
+          )}
+
+          <button className="tap-button tap-button-primary min-h-12 w-full md:w-max" type="submit" disabled={!sellers.length}>
+            Add Existing Seller to Event
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 

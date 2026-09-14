@@ -9,6 +9,7 @@ import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import {
   addBrand,
   addEventSeller,
+  addExistingSellerToEvent,
   addProduct,
   checkInCreator,
   createEvent,
@@ -371,6 +372,28 @@ export async function addEventSellerAction(formData: FormData) {
   revalidatePath(`/admin/events/${eventId}/products`);
   revalidatePath("/seller");
   revalidatePath("/seller/events");
+  revalidatePath("/seller/products");
+  redirect(`/admin/events/${eventId}/sellers?${params.toString()}`);
+}
+
+export async function addExistingSellerToEventAction(formData: FormData) {
+  await requireAuth("admin");
+
+  const eventId = String(formData.get("event_id") || "");
+  const result = await addExistingSellerToEvent(formData);
+  const params = new URLSearchParams({
+    sellerMessage: result.message,
+    sellerResult: result.ok ? "success" : "error"
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/sellers");
+  revalidatePath(`/admin/events/${eventId}`);
+  revalidatePath(`/admin/events/${eventId}/sellers`);
+  revalidatePath(`/admin/events/${eventId}/products`);
+  revalidatePath("/seller");
+  revalidatePath("/seller/events");
+  revalidatePath("/seller/scan");
   revalidatePath("/seller/products");
   redirect(`/admin/events/${eventId}/sellers?${params.toString()}`);
 }

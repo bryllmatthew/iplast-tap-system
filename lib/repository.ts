@@ -58,6 +58,24 @@ type DemoState = {
 };
 
 const defaultOrganizationId = "00000000-0000-0000-0000-000000000001";
+const registrationRequiredFieldIds = new Set([
+  "full_name",
+  "mobile",
+  "tiktok_username",
+  "tiktok_profile_url",
+  "location",
+  "follower_count",
+  "creator_category"
+]);
+const registrationFieldLabels: Record<string, string> = {
+  full_name: "Name",
+  mobile: "Viber Number",
+  tiktok_username: "TikTok Username",
+  tiktok_profile_url: "TikTok Profile link",
+  location: "Location",
+  follower_count: "Follower count",
+  creator_category: "Creator Category"
+};
 const eventSelect =
   "id,event_name,event_slug,description,venue,address,event_date,start_time,end_time,registration_start,registration_end,maximum_creator_capacity,poster_url,status";
 
@@ -1571,9 +1589,9 @@ export async function submitRegistration(slug: string, formData: FormData) {
   if (!form) return { ok: false, message: "Registration is not open." };
 
   const answers = Object.fromEntries(formData.entries());
-  for (const field of form.fields) {
-    if (field.required && !String(answers[field.id] || "").trim()) {
-      return { ok: false, message: `${field.label} is required.` };
+  for (const fieldId of registrationRequiredFieldIds) {
+    if (!String(answers[fieldId] || "").trim()) {
+      return { ok: false, message: `${registrationFieldLabels[fieldId] || fieldId} is required.` };
     }
   }
 
@@ -2106,22 +2124,22 @@ export async function listSellerDashboard(eventId?: string) {
     const brands = (brandRows || []).map(brandFromRow);
     const brandIds = unique(brands.map((brand) => brand.id));
 
-    const eventSellerQuery = supabase
+    let eventSellerQuery = supabase
       .from("event_sellers")
       .select("id,event_id,seller_id,booth_name,booth_number,status")
       .eq("seller_id", seller.id)
       .order("created_at", { ascending: false });
-    if (eventId) eventSellerQuery.eq("event_id", eventId);
+    if (eventId) eventSellerQuery = eventSellerQuery.eq("event_id", eventId);
 
-    const claimsQuery = supabase
+    let claimsQuery = supabase
       .from("sample_claims")
       .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
       .eq("seller_id", seller.id)
       .eq("status", "claimed");
-    if (eventId) claimsQuery.eq("event_id", eventId);
+    if (eventId) claimsQuery = claimsQuery.eq("event_id", eventId);
 
-    const scansQuery = supabase.from("qr_scans").select("id", { count: "exact", head: true }).eq("seller_id", seller.id);
-    if (eventId) scansQuery.eq("event_id", eventId);
+    let scansQuery = supabase.from("qr_scans").select("id", { count: "exact", head: true }).eq("seller_id", seller.id);
+    if (eventId) scansQuery = scansQuery.eq("event_id", eventId);
 
     const [productResult, eventSellerResult, claimsResult, scansResult] = await Promise.all([
       brandIds.length
@@ -2137,17 +2155,22 @@ export async function listSellerDashboard(eventId?: string) {
 
     const products = (productResult.data || []).map(productFromRow);
     const productIds = unique(products.map((product) => product.id));
-    const eventSeller = eventSellerResult.data?.[0] ? eventSellerFromRow(eventSellerResult.data[0]) : demoEventSeller;
+    const selectedEvent = eventId ? await getEventById(eventId) : null;
+    const eventSeller = eventSellerResult.data?.[0]
+      ? eventSellerFromRow(eventSellerResult.data[0])
+      : selectedEvent
+        ? { ...demoEventSeller, event_id: selectedEvent.id, seller_id: seller.id }
+        : demoEventSeller;
     const claims = (claimsResult.data || []).map(claimFromRow);
-    const event = await getEventById(eventSeller.event_id);
+    const event = selectedEvent || (await getEventById(eventSeller.event_id));
 
-    const eventProductQuery = productIds.length
+    let eventProductQuery = productIds.length
       ? supabase
         .from("event_products")
         .select("id,event_id,product_id,available_quantity,max_claims_per_creator,status")
         .in("product_id", productIds)
       : null;
-    if (eventProductQuery && eventId) eventProductQuery.eq("event_id", eventId);
+    if (eventProductQuery && eventId) eventProductQuery = eventProductQuery.eq("event_id", eventId);
 
     const { data: eventProductRows } = eventProductQuery ? await eventProductQuery : { data: [] };
 

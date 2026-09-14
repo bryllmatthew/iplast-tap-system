@@ -34,7 +34,7 @@ function qrStatusCopy(status: string, registrationStatus?: string) {
     label: "Pending approval",
     className: "bg-amber-50 text-amber-800",
     title: "Your QR has been created",
-    body: "Bring this QR to the event. It will only work for seller sample claims after TAP approves and checks you in."
+    body: "Your QR code has been created. Bring it with you to the event. You can use it to claim seller samples once iPlast has approved your request and checked you in."
   };
 }
 
@@ -57,7 +57,7 @@ export default async function QrPage({
       <section className="tap-card w-full max-w-lg p-6 text-center">
         {query.created ? (
           <div className="mb-5 rounded-lg border border-green-200 bg-green-50 p-3 text-sm font-bold text-green-800">
-            Registration received. Your QR is ready to save.
+            Your QR code has been created. Bring it with you to the event. You can use it to claim seller samples once iPlast has approved your request and checked you in.
           </div>
         ) : null}
         <p className="text-sm font-black uppercase text-cyan-700">{data.event.event_name}</p>
@@ -74,7 +74,7 @@ export default async function QrPage({
         <CreatorQrActions image={image} qrUrl={data.qr.qr_url} creatorName={data.creator.full_name} />
         <div className="grid grid-cols-3 gap-2 text-left">
           <div className="rounded-lg bg-slate-50 p-3">
-            <p className="text-xs font-bold text-slate-500">GMV Max</p>
+            <p className="text-xs font-bold text-slate-500">Last Month GMV</p>
             <p className="font-black text-ink">{currency(data.creator.gmv_max_total)}</p>
           </div>
           <div className="rounded-lg bg-slate-50 p-3">

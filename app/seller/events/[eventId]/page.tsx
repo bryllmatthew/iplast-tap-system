@@ -20,7 +20,7 @@ export default async function SellerEventPage({
           <span className="status-pill bg-green-50 text-green-700">{dashboard.event.status}</span>
           <h1 className="mt-3 text-3xl font-black text-ink">{dashboard.event.event_name}</h1>
           <p className="mt-2 text-slate-600">{dashboard.eventSeller.booth_name} - {dashboard.eventSeller.booth_number}</p>
-          <Link className="tap-button tap-button-primary mt-5 w-full min-h-16 sm:w-auto" href={`/seller/events/${dashboard.event.id}/scan`}>
+          <Link className="tap-button tap-button-primary mt-5 w-full min-h-16 sm:w-auto" href={`/seller/events/${eventId}/scan`}>
             <ScanLine className="size-4" />
             Scan Creator QR
           </Link>
@@ -32,13 +32,13 @@ export default async function SellerEventPage({
           icon={<ScanLine className="size-5" />}
           title="Scan Creator"
           body="Verify QR eligibility and issue samples."
-          href={`/seller/events/${dashboard.event.id}/scan`}
+          href={`/seller/events/${eventId}/scan`}
         />
         <ActionCard
           icon={<ClipboardList className="size-5" />}
           title="Claims"
           body={`${number(dashboard.samplesIssued)} samples issued from this seller portal.`}
-          href={`/seller/events/${dashboard.event.id}/claims`}
+          href={`/seller/events/${eventId}/claims`}
         />
         <ActionCard
           icon={<PackageCheck className="size-5" />}

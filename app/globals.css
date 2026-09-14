@@ -117,6 +117,11 @@ textarea {
   box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
 }
 
+.tap-input option {
+  background: #ffffff;
+  color: #111827;
+}
+
 .tap-label {
   display: grid;
   gap: 0.4rem;

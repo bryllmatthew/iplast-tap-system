@@ -4,6 +4,53 @@ import { notFound } from "next/navigation";
 import { submitRegistrationAction } from "@/app/actions";
 import { getEventBySlug, getPublishedForm } from "@/lib/repository";
 import { shortDate } from "@/lib/format";
+import type { FieldType, FormField } from "@/lib/types";
+
+const requiredFieldIds = new Set([
+  "full_name",
+  "mobile",
+  "tiktok_username",
+  "tiktok_profile_url",
+  "location",
+  "follower_count",
+  "creator_category"
+]);
+
+const fieldOverrides: Record<
+  string,
+  {
+    label?: string;
+    fieldType?: FieldType;
+    options?: string[];
+    placeholder?: string;
+  }
+> = {
+  full_name: { label: "Name" },
+  mobile: { label: "Viber Number" },
+  tiktok_username: { label: "TikTok Username  (@xxxxxx)", placeholder: "@xxxxxx" },
+  tiktok_profile_url: { label: "TikTok Profile link", placeholder: "https://www.tiktok.com/@xxxxxx" },
+  follower_count: { label: "Follower count" },
+  gmv_max_total: { label: "Last Month GMV" },
+  creator_category: { label: "Creator Category" },
+  content_categories: { label: "Content Categories/Niche" },
+  affiliate_experience: {
+    label: "Content Format",
+    fieldType: "single_select",
+    options: ["LIVE Only", "Video Only", "Both LIVE and Video"]
+  }
+};
+
+function displayField(field: FormField) {
+  const override = fieldOverrides[field.id] || {};
+  return {
+    ...field,
+    label: override.label || field.label,
+    field_type: override.fieldType || field.field_type,
+    options: override.options || field.options,
+    placeholder: override.placeholder,
+    required: requiredFieldIds.has(field.id)
+  };
+}
 
 export default async function RegisterPage({
   params,
@@ -50,11 +97,16 @@ export default async function RegisterPage({
               <p className="mt-2 text-slate-600">Fields are captured against form version {form.version_number}.</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              {form.fields.map((field) => (
+              {form.fields.map((rawField) => {
+                const field = displayField(rawField);
+                return (
                 <label key={field.id} className={`tap-label ${field.field_type === "long_text" ? "sm:col-span-2" : ""}`}>
-                  {field.label}
+                  <span>
+                    {field.label}
+                    {field.required ? <span className="text-red-400"> *</span> : null}
+                  </span>
                   {field.field_type === "long_text" ? (
-                    <textarea className="tap-input min-h-28" name={field.id} required={field.required} />
+                    <textarea className="tap-input min-h-28" name={field.id} required={field.required} placeholder={field.placeholder} />
                   ) : field.field_type === "single_select" ? (
                     <select className="tap-input" name={field.id} required={field.required}>
                       <option value="">Select</option>
@@ -68,7 +120,7 @@ export default async function RegisterPage({
                     <input
                       className="tap-input"
                       name={field.id}
-                      placeholder={field.options?.slice(0, 3).join(", ")}
+                      placeholder={field.placeholder || field.options?.slice(0, 3).join(", ")}
                       required={field.required}
                     />
                   ) : (
@@ -76,11 +128,13 @@ export default async function RegisterPage({
                       className="tap-input"
                       name={field.id}
                       required={field.required}
+                      placeholder={field.placeholder}
                       type={field.field_type === "number" ? "number" : field.field_type === "email" ? "email" : "text"}
                     />
                   )}
                 </label>
-              ))}
+                );
+              })}
             </div>
             <button className="tap-button tap-button-primary w-full sm:w-auto" type="submit">
               Submit Registration

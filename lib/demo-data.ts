@@ -42,17 +42,17 @@ export const demoForm: FormVersion = {
   status: "published",
   published_at: "2026-08-01T08:00:00+08:00",
   fields: [
-    { id: "full_name", label: "Full Name", field_type: "short_text", required: true, sort_order: 1 },
-    { id: "tiktok_username", label: "TikTok Username", field_type: "short_text", required: true, sort_order: 2 },
-    { id: "tiktok_profile_url", label: "TikTok Profile URL", field_type: "url", required: true, sort_order: 3 },
-    { id: "mobile", label: "Mobile Number", field_type: "phone", required: true, sort_order: 4 },
-    { id: "email", label: "Email", field_type: "email", required: true, sort_order: 5 },
+    { id: "full_name", label: "Name", field_type: "short_text", required: true, sort_order: 1 },
+    { id: "tiktok_username", label: "TikTok Username  (@xxxxxx)", field_type: "short_text", required: true, sort_order: 2 },
+    { id: "tiktok_profile_url", label: "TikTok Profile link", field_type: "url", required: true, sort_order: 3 },
+    { id: "mobile", label: "Viber Number", field_type: "phone", required: true, sort_order: 4 },
+    { id: "email", label: "Email", field_type: "email", required: false, sort_order: 5 },
     { id: "location", label: "Location", field_type: "short_text", required: true, sort_order: 6 },
-    { id: "follower_count", label: "Follower Count", field_type: "number", required: true, sort_order: 7 },
-    { id: "gmv_max_total", label: "GMV Max Total", field_type: "number", required: true, sort_order: 8 },
+    { id: "follower_count", label: "Follower count", field_type: "number", required: true, sort_order: 7 },
+    { id: "gmv_max_total", label: "Last Month GMV", field_type: "number", required: false, sort_order: 8 },
     {
       id: "creator_category",
-      label: "Creator Category/Niche",
+      label: "Creator Category",
       field_type: "single_select",
       required: true,
       options: ["Beauty", "Fashion", "Food", "Electronics", "Home", "Health", "Lifestyle"],
@@ -60,7 +60,7 @@ export const demoForm: FormVersion = {
     },
     {
       id: "content_categories",
-      label: "Content Categories",
+      label: "Content Categories/Niche",
       field_type: "multi_select",
       required: false,
       options: ["Beauty", "Fashion", "Food", "Electronics", "Home", "Health", "Lifestyle"],
@@ -68,9 +68,10 @@ export const demoForm: FormVersion = {
     },
     {
       id: "affiliate_experience",
-      label: "Previous Affiliate Experience",
-      field_type: "long_text",
+      label: "Content Format",
+      field_type: "single_select",
       required: false,
+      options: ["LIVE Only", "Video Only", "Both LIVE and Video"],
       sort_order: 11
     }
   ]

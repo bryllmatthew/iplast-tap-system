@@ -33,7 +33,7 @@ export default async function EventSellersPage({
           <div>
             <h1 className="text-3xl font-black text-ink">Event Sellers</h1>
             <p className="mt-2 text-slate-600">
-              Assign sellers, booth numbers, starter brands, and sample inventory for {event?.event_name || "this event"}.
+              Assign sellers, booth numbers, product brands, and sample inventory for {event?.event_name || "this event"}.
             </p>
           </div>
           <Link className="tap-button tap-button-primary" href={`/admin/events/${eventId}/sellers?addSeller=1`}>
@@ -129,7 +129,7 @@ function AddSellerModal({ eventId }: { eventId: string }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-black text-ink">Add Seller</h2>
-            <p className="mt-2 text-slate-600">Create the seller, assign a booth, add starter brands/products, and queue login details.</p>
+            <p className="mt-2 text-slate-600">Create the seller, assign a booth, add starter products, and queue login details.</p>
           </div>
           <Link className="tap-button tap-button-secondary" href={`/admin/events/${eventId}/sellers`} aria-label="Close add seller form">
             <X className="size-4" />
@@ -168,11 +168,6 @@ function AddSellerModal({ eventId }: { eventId: string }) {
               <input className="tap-input" name="booth_name" placeholder="ABC Beauty Booth" />
             </label>
           </div>
-
-          <label className="tap-label">
-            Brands
-            <textarea className="tap-input min-h-24" name="brands" placeholder={"ABC Beauty\nABC Wellness"} />
-          </label>
 
           <AddSellerProductsTable />
 

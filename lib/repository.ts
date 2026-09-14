@@ -60,20 +60,24 @@ type DemoState = {
 const defaultOrganizationId = "00000000-0000-0000-0000-000000000001";
 const registrationRequiredFieldIds = new Set([
   "full_name",
+  "email",
   "mobile",
   "tiktok_username",
   "tiktok_profile_url",
   "location",
   "follower_count",
+  "gmv_max_total",
   "creator_category"
 ]);
 const registrationFieldLabels: Record<string, string> = {
   full_name: "Name",
+  email: "Email",
   mobile: "Viber Number",
   tiktok_username: "TikTok Username",
   tiktok_profile_url: "TikTok Profile link",
   location: "Location",
   follower_count: "Follower count",
+  gmv_max_total: "Last Month GMV",
   creator_category: "Creator Category"
 };
 const eventSelect =
@@ -734,13 +738,6 @@ export async function deleteEvent(eventId: string) {
   return { ok: true, message: `${event.event_name} deleted.` };
 }
 
-function parseLines(value: FormDataEntryValue | null) {
-  return String(value || "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
 export async function listEventSellerRows(eventId: string) {
   const s = (await loadDbState()) || state();
   return s.eventSellers
@@ -881,10 +878,11 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
   const boothNumber = String(formData.get("booth_number") || "").trim();
   const boothName = String(formData.get("booth_name") || sellerName).trim();
   const password = String(formData.get("password") || "").trim();
-  const brandLines = parseLines(formData.get("brands"));
   const productBrands = formData.getAll("product_brand").map((value) => String(value).trim());
   const productNames = formData.getAll("product_name").map((value) => String(value).trim());
   const productQuantities = formData.getAll("product_quantity").map((value) => Number(value || 0));
+  const brandNames = unique(productBrands.filter(Boolean));
+  if (!brandNames.length) brandNames.push(`${sellerName} Brand`);
 
   if (!eventId || !sellerName || !email || !boothNumber || !password) {
     return { ok: false, message: "Seller name, email, password, event, and booth number are required." };
@@ -927,7 +925,6 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
     });
     if (eventSellerError) return { ok: false, message: eventSellerError.message };
 
-    const brandNames = brandLines.length ? brandLines : [`${sellerName} Brand`];
     const { data: dbBrands, error: brandError } = await supabase
       .from("brands")
       .insert(
@@ -1021,7 +1018,7 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
   s.eventSellers.unshift(eventSeller);
 
   const brandByName = new Map<string, Brand>();
-  for (const brandName of brandLines.length ? brandLines : [`${sellerName} Brand`]) {
+  for (const brandName of brandNames) {
     const brand: Brand = {
       id: uid("bra"),
       seller_id: seller.id,

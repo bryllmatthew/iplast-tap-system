@@ -8,11 +8,13 @@ import type { FieldType, FormField } from "@/lib/types";
 
 const requiredFieldIds = new Set([
   "full_name",
+  "email",
   "mobile",
   "tiktok_username",
   "tiktok_profile_url",
   "location",
   "follower_count",
+  "gmv_max_total",
   "creator_category"
 ]);
 

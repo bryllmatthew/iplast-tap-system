@@ -46,10 +46,10 @@ export const demoForm: FormVersion = {
     { id: "tiktok_username", label: "TikTok Username  (@xxxxxx)", field_type: "short_text", required: true, sort_order: 2 },
     { id: "tiktok_profile_url", label: "TikTok Profile link", field_type: "url", required: true, sort_order: 3 },
     { id: "mobile", label: "Viber Number", field_type: "phone", required: true, sort_order: 4 },
-    { id: "email", label: "Email", field_type: "email", required: false, sort_order: 5 },
+    { id: "email", label: "Email", field_type: "email", required: true, sort_order: 5 },
     { id: "location", label: "Location", field_type: "short_text", required: true, sort_order: 6 },
     { id: "follower_count", label: "Follower count", field_type: "number", required: true, sort_order: 7 },
-    { id: "gmv_max_total", label: "Last Month GMV", field_type: "number", required: false, sort_order: 8 },
+    { id: "gmv_max_total", label: "Last Month GMV", field_type: "number", required: true, sort_order: 8 },
     {
       id: "creator_category",
       label: "Creator Category",

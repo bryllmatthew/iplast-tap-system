@@ -30,7 +30,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           iPlast TAP System
         </Link>
         <div className="flex items-center gap-3">
-          <Link className="tap-button tap-button-primary" href="/vismincreatorsclub">
+          <Link className="tap-button tap-button-primary" href="/vismincreatorsclub" target="_blank" rel="noreferrer">
             View Public Page
           </Link>
           <form action={logoutAction} className="hidden lg:block">

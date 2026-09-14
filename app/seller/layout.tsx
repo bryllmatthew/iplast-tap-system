@@ -15,8 +15,8 @@ export default async function SellerLayout({ children }: { children: React.React
   ] as const;
 
   return (
-    <main className="tap-shell max-w-5xl pb-24 pt-3 lg:py-5">
-      <div className="tap-card mb-4 flex min-h-14 items-center justify-between gap-4 px-4">
+    <main className="tap-shell grid gap-5 pb-24 pt-4 lg:grid-cols-[220px_1fr] lg:py-6">
+      <div className="tap-card col-span-full flex min-h-14 items-center justify-between gap-4 px-4">
         <Link href="/seller" className="font-black text-ink">
           Seller Account
         </Link>
@@ -26,16 +26,20 @@ export default async function SellerLayout({ children }: { children: React.React
           </button>
         </form>
       </div>
-      <div className="mb-4 hidden gap-2 overflow-x-auto rounded-lg border border-slate-200 bg-white p-2 lg:flex">
-        <nav className="flex flex-1 gap-2">
-          {links.map(([label, href]) => (
-            <Link key={href} className="shrink-0 rounded-lg px-3 py-2 text-sm font-black text-slate-600 hover:bg-slate-100" href={href}>
+      <aside className="tap-card hidden h-max p-3 lg:block">
+        <div className="flex items-center justify-between gap-2 px-3 py-2">
+          <p className="text-xs font-black uppercase text-slate-400">Seller Menu</p>
+        </div>
+        <nav className="grid gap-1">
+          {links.map(([label, href, Icon]) => (
+            <Link key={href} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-650 hover:bg-slate-100" href={href}>
+              <Icon className="size-4 text-cyan-700" />
               {label}
             </Link>
           ))}
         </nav>
-      </div>
-      {children}
+      </aside>
+      <section className="min-w-0">{children}</section>
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white/95 px-2 py-2 backdrop-blur lg:hidden">
         {links.map(([label, href, Icon]) => (
           <Link key={href} className="grid justify-items-center gap-1 rounded-lg px-1 py-2 text-[0.68rem] font-black text-slate-500" href={href}>

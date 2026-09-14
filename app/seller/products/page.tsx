@@ -96,28 +96,32 @@ export default async function SellerProductsPage({
           <p className="mt-2 text-slate-600">Track what is left and what has already been given to creators.</p>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-left">
+          <table className="w-full min-w-[1120px] text-left">
             <thead className="bg-slate-50 text-xs font-black uppercase text-slate-500">
               <tr>
                 <th className="p-4">Brand</th>
                 <th className="p-4">Product</th>
+                <th className="p-4">Description</th>
                 <th className="p-4">SKU</th>
                 <th className="p-4">Initial Inventory</th>
                 <th className="p-4">Given</th>
                 <th className="p-4">Remaining</th>
                 <th className="p-4">Limit</th>
+                <th className="p-4">Action</th>
               </tr>
             </thead>
             <tbody>
               {productRows.map(({ product, brand, issued, remaining }) => (
-                <tr key={product.id} className="border-t border-slate-100 align-top">
-                  <td className="p-3 text-slate-600">{brand.brand_name}</td>
+                <tr key={product.id} className="border-t border-slate-100 align-middle">
+                  <td className="whitespace-nowrap p-3 text-slate-600">{brand.brand_name}</td>
                   <td className="p-3">
-                    <form id={`product-${product.id}`} action={updateProductAction} className="grid gap-2">
+                    <form id={`product-${product.id}`} action={updateProductAction}>
                       <input type="hidden" name="product_id" value={product.id} />
                       <input className="tap-input min-w-44" name="product_name" defaultValue={product.product_name} required />
-                      <textarea className="tap-input min-h-20 min-w-56" name="description" defaultValue={product.description} placeholder="Description" />
                     </form>
+                  </td>
+                  <td className="p-3">
+                    <input className="tap-input min-w-56" form={`product-${product.id}`} name="description" defaultValue={product.description} placeholder="Description" />
                   </td>
                   <td className="p-3">
                     <input className="tap-input min-w-32" form={`product-${product.id}`} name="sku" defaultValue={product.sku || ""} />
@@ -130,12 +134,12 @@ export default async function SellerProductsPage({
                     <input className="tap-input min-w-24" form={`product-${product.id}`} name="available_quantity" type="number" min={0} defaultValue={remaining} />
                   </td>
                   <td className="p-3">
-                    <div className="grid gap-2">
-                      <input className="tap-input min-w-24" form={`product-${product.id}`} name="max_claims_per_creator" type="number" min={1} defaultValue={product.max_claims_per_creator} />
-                      <button className="tap-button tap-button-primary" form={`product-${product.id}`} type="submit">
-                        Save
-                      </button>
-                    </div>
+                    <input className="tap-input min-w-24" form={`product-${product.id}`} name="max_claims_per_creator" type="number" min={1} defaultValue={product.max_claims_per_creator} />
+                  </td>
+                  <td className="p-3">
+                    <button className="tap-button tap-button-primary whitespace-nowrap" form={`product-${product.id}`} type="submit">
+                      Save
+                    </button>
                   </td>
                 </tr>
               ))}

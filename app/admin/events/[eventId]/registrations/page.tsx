@@ -56,7 +56,7 @@ export default async function RegistrationsPage({
 
   return (
     <section className="tap-card overflow-hidden">
-      <div className="grid gap-4 border-b border-slate-200 p-5 md:grid-cols-[1fr_320px]">
+      <div className="grid gap-5 border-b border-slate-200 p-5">
         <div>
           <h1 className="text-3xl font-black text-ink">Event Registrations</h1>
           <p className="mt-2 text-slate-600">{event?.event_name || "Selected event"} registrations and form responses.</p>
@@ -64,7 +64,7 @@ export default async function RegistrationsPage({
             Change event
           </Link>
         </div>
-        <form className="grid gap-3 md:grid-cols-2">
+        <form className="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
           <label className="tap-label">
             Search
             <input className="tap-input" name="q" placeholder="Name, TikTok, mobile, email" defaultValue={q} />
@@ -116,7 +116,7 @@ export default async function RegistrationsPage({
               <option value="checked_out">Checked out</option>
             </select>
           </label>
-          <div className="flex items-end gap-2 md:col-span-2">
+          <div className="flex items-end gap-2 md:col-span-4 xl:col-span-8">
             <button className="tap-button tap-button-primary" type="submit">
               Apply Filters
             </button>

@@ -226,6 +226,41 @@ textarea {
   border-color: rgba(100, 210, 255, 0.65);
 }
 
+.tap-button-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.seller-db-row {
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.seller-db-row:hover {
+  background: rgba(10, 132, 255, 0.12);
+}
+
+.seller-db-row:hover .seller-db-title {
+  color: #ffffff;
+}
+
+.seller-db-row:hover .seller-db-meta {
+  color: #d1d1d6;
+}
+
+.seller-db-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.seller-db-card:hover {
+  border-color: rgba(100, 210, 255, 0.65);
+  background: rgba(10, 132, 255, 0.1);
+}
+
 .text-6xl {
   font-size: clamp(2.65rem, 5vw, 4rem);
   line-height: 1.02;

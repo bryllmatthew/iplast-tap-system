@@ -84,7 +84,7 @@ export default async function SellerDetailPage({
           {eventSellers.map((eventSeller) => {
             const event = events.find((item) => item.id === eventSeller.event_id);
             return (
-              <Link key={eventSeller.id} className="rounded-lg bg-slate-50 p-4 hover:border-cyan-400" href={`/admin/events/${eventSeller.event_id}/sellers`}>
+              <Link key={eventSeller.id} className="seller-db-card block rounded-lg bg-slate-50 p-4" href={`/admin/events/${eventSeller.event_id}/sellers`}>
                 <p className="font-black text-ink">{event?.event_name || "Event"}</p>
                 <p className="mt-1 text-sm text-slate-500">
                   {event ? `${shortDate(event.event_date)} - ${event.venue}` : "Event details unavailable"}

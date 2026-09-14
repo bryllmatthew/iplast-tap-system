@@ -43,13 +43,13 @@ export default async function SellersDatabasePage({
 
       <div className="tap-card divide-y divide-slate-100 overflow-hidden">
         {rows.map(({ seller }) => (
-          <div key={seller.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
+          <div key={seller.id} className="seller-db-row flex items-center justify-between gap-3 px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <Link className="truncate font-black text-ink hover:text-cyan-700" href={`/admin/sellers/${seller.id}`}>
+                <Link className="seller-db-title truncate font-black text-ink hover:text-white" href={`/admin/sellers/${seller.id}`}>
                   {seller.company_name}
                 </Link>
-                <span className="mt-1 flex min-w-0 items-center gap-2 text-sm text-slate-500">
+                <span className="seller-db-meta mt-1 flex min-w-0 items-center gap-2 text-sm text-slate-500">
                   <Mail className="size-4 shrink-0 text-cyan-700" />
                   <span className="truncate">{seller.email}</span>
                 </span>

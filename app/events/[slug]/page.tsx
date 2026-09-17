@@ -17,7 +17,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-[#050507]/90 to-[#050507]" />
         <div className="tap-shell relative grid min-h-[calc(100vh-64px)] items-center gap-8 py-10 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="space-y-6">
-            <div className="inline-flex rounded-full border border-white/25 bg-white/15 px-3 py-1 text-sm font-bold">
+            <div className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-sm font-bold text-cyan-800">
               Registration open
             </div>
             <h1 className="text-4xl font-black tracking-normal sm:text-6xl">{event.event_name}</h1>
@@ -40,7 +40,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 <span>{event.maximum_creator_capacity} creator slots</span>
               </div>
             </div>
-            <Link className="tap-button bg-white text-ink" href={`/events/${event.event_slug}/register`}>
+            <Link className="tap-button tap-button-primary" href={`/events/${event.event_slug}/register`}>
               Register Now
             </Link>
           </div>

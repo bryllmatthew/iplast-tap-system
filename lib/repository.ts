@@ -19,7 +19,7 @@ import {
   demoSeller
 } from "@/lib/demo-data";
 import { cleanEnv } from "@/lib/clean-env";
-import { siteUrl } from "@/lib/env";
+import { appUrl, canonicalAppUrl } from "@/lib/env";
 import type {
   Attendance,
   Brand,
@@ -215,7 +215,7 @@ function qrFromRow(row: Record<string, unknown>): CreatorQr {
     registration_id: String(row.registration_id),
     attendance_id: row.attendance_id ? String(row.attendance_id) : undefined,
     qr_token: String(row.qr_token),
-    qr_url: String(row.qr_url || `${siteUrl()}/qr/${row.qr_token}`),
+    qr_url: canonicalAppUrl(row.qr_url ? String(row.qr_url) : undefined, `/qr/${row.qr_token}`),
     status: String(row.status || "pending_approval") as CreatorQr["status"],
     generated_at: String(row.generated_at || ""),
     last_scanned_at: row.last_scanned_at ? String(row.last_scanned_at) : undefined
@@ -469,7 +469,7 @@ function ensureCreatorQr(registration: Registration, status?: CreatorQr["status"
       creator_id: registration.creator_id,
       registration_id: registration.id,
       qr_token: token,
-      qr_url: `${siteUrl()}/qr/${token}`,
+      qr_url: appUrl(`/qr/${token}`),
       status: status || "pending_approval",
       generated_at: new Date().toISOString()
     };
@@ -1315,7 +1315,7 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
       id: crypto.randomUUID(),
       seller_id: seller.id,
       email,
-      login_url: `${siteUrl()}/seller`,
+      login_url: appUrl("/seller"),
       temporary_password: password,
       created_at: new Date().toISOString(),
       status: "queued"
@@ -1409,7 +1409,7 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
     id: uid("inv"),
     seller_id: seller.id,
     email,
-    login_url: `${siteUrl()}/seller`,
+    login_url: appUrl("/seller"),
     temporary_password: password,
     created_at: new Date().toISOString(),
     status: "queued"
@@ -2160,7 +2160,7 @@ export async function submitRegistration(slug: string, formData: FormData) {
         creator_id: creator.id,
         registration_id: registration.id,
         qr_token: token,
-        qr_url: `${siteUrl()}/qr/${token}`,
+        qr_url: appUrl(`/qr/${token}`),
         status: "pending_approval"
       })
       .select("qr_token")

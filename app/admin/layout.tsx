@@ -4,6 +4,7 @@ import { BarChart3, CalendarDays, LayoutDashboard, Store, Users } from "lucide-r
 import { logoutAction } from "@/app/actions";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireAuth } from "@/lib/auth";
+import { appUrl } from "@/lib/env";
 
 const mobileLinks = [
   ["Home", "/admin", LayoutDashboard],
@@ -15,6 +16,7 @@ const mobileLinks = [
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await requireAuth("admin");
+  const publicUrl = appUrl("/vismincreatorsclub/");
 
   return (
     <main className="tap-app-shell space-y-5 pb-24 pt-4 lg:py-6">
@@ -23,7 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           iPlast TAP System
         </Link>
         <div className="flex items-center gap-3">
-          <Link className="tap-button tap-button-primary" href="/vismincreatorsclub" target="_blank" rel="noreferrer">
+          <Link className="tap-button tap-button-primary" href={publicUrl} target="_blank" rel="noreferrer">
             View Public Page
           </Link>
           <form action={logoutAction} className="hidden lg:block">

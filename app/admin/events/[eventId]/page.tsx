@@ -6,7 +6,7 @@ import QRCode from "qrcode";
 import { updateEventBannerAction } from "@/app/actions";
 import { DeleteEventButton } from "@/components/DeleteEventButton";
 import { EventRegistrationQrActions } from "@/components/EventRegistrationQrActions";
-import { siteUrl } from "@/lib/env";
+import { appUrl } from "@/lib/env";
 import { number, shortDate } from "@/lib/format";
 import { getEventById, listRegistrations, listSellerDashboard } from "@/lib/repository";
 import { eventStatusClass } from "@/lib/status";
@@ -26,7 +26,7 @@ export default async function AdminEventHubPage({
   const sellerDashboard = await listSellerDashboard();
   const approved = registrations.filter((row) => row.registration.registration_status === "approved").length;
   const checkedIn = registrations.filter((row) => row.attendance?.status === "checked_in").length;
-  const registrationUrl = `${siteUrl()}/events/${event.event_slug}/register`;
+  const registrationUrl = appUrl(`/events/${event.event_slug}/register`);
   const registrationQrImage = await QRCode.toDataURL(registrationUrl, { margin: 1, width: 420 });
 
   return (

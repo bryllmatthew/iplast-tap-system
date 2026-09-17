@@ -1,4 +1,4 @@
-import { siteUrl } from "@/lib/env";
+import { appUrl } from "@/lib/env";
 import type {
   Attendance,
   Brand,
@@ -193,7 +193,7 @@ export const demoQr: CreatorQr[] = [
     registration_id: "reg_juan",
     attendance_id: "att_juan",
     qr_token: "tap_demo_juan_2026",
-    qr_url: `${siteUrl()}/qr/tap_demo_juan_2026`,
+    qr_url: appUrl("/qr/tap_demo_juan_2026"),
     status: "active",
     generated_at: "2026-09-10T10:12:05+08:00",
     last_scanned_at: "2026-09-10T14:14:00+08:00"
@@ -204,7 +204,7 @@ export const demoQr: CreatorQr[] = [
     creator_id: "cre_maria",
     registration_id: "reg_maria",
     qr_token: "tap_demo_maria_2026",
-    qr_url: `${siteUrl()}/qr/tap_demo_maria_2026`,
+    qr_url: appUrl("/qr/tap_demo_maria_2026"),
     status: "approved_not_checked_in",
     generated_at: "2026-09-05T10:10:05+08:00"
   },
@@ -214,7 +214,7 @@ export const demoQr: CreatorQr[] = [
     creator_id: "cre_carlo",
     registration_id: "reg_carlo",
     qr_token: "tap_demo_carlo_2026",
-    qr_url: `${siteUrl()}/qr/tap_demo_carlo_2026`,
+    qr_url: appUrl("/qr/tap_demo_carlo_2026"),
     status: "pending_approval",
     generated_at: "2026-09-06T15:45:05+08:00"
   }

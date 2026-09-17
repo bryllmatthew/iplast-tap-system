@@ -27,7 +27,7 @@ import {
 } from "@/lib/repository";
 import { ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, requireAuth, userHasRole } from "@/lib/auth";
 import { cleanEnv } from "@/lib/clean-env";
-import { siteUrl } from "@/lib/env";
+import { appUrl } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 async function savePublicUpload(file: File) {
@@ -378,7 +378,7 @@ export async function resetSellerPasswordAction(formData: FormData) {
           await supabase.from("seller_invites").insert({
             seller_id: detail.seller.id,
             email: detail.seller.email,
-            login_url: `${siteUrl()}/seller`,
+            login_url: appUrl("/seller"),
             temporary_password: password,
             status: "queued"
           });

@@ -23,13 +23,14 @@ insert into public.events (
   'ongoing'
 ) on conflict do nothing;
 
-insert into public.sellers (id, organization_id, company_name, contact_name, email, phone, status)
+insert into public.sellers (id, organization_id, company_name, contact_name, username, email, phone, status)
 values (
   '20000000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000001',
   'ABC Trading',
   'Ana Bautista',
-  'seller@example.com',
+  'abc-trading',
+  'abc-trading@seller.tap.iplast.ai',
   '+639178880000',
   'active'
 ) on conflict do nothing;

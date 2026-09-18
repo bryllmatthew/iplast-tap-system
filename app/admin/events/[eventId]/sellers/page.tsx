@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mail, Pencil, Plus, Search, UserPlus, X } from "lucide-react";
+import { KeyRound, Pencil, Plus, Search, UserPlus, X } from "lucide-react";
 
 import { addEventSellerAction, addExistingSellerToEventAction, updateSellerAction } from "@/app/actions";
 import { AddSellerProductsTable } from "@/components/AddSellerProductsTable";
@@ -17,7 +17,7 @@ export default async function EventSellersPage({
     addSeller?: string;
     sellerMessage?: string;
     sellerResult?: string;
-    inviteEmail?: string;
+    inviteUsername?: string;
     invitePassword?: string;
     inviteLogin?: string;
     editSeller?: string;
@@ -67,18 +67,18 @@ export default async function EventSellersPage({
         ) : null}
       </div>
 
-      {query.inviteEmail && query.invitePassword && query.inviteLogin ? (
+      {query.inviteUsername && query.invitePassword && query.inviteLogin ? (
         <section className="tap-card p-5">
           <div className="flex items-start gap-3">
-            <Mail className="mt-1 size-5 text-cyan-700" />
+            <KeyRound className="mt-1 size-5 text-cyan-700" />
             <div>
-              <h2 className="text-xl font-black text-ink">Seller Login Email Preview</h2>
+              <h2 className="text-xl font-black text-ink">Seller Login Details</h2>
               <p className="mt-2 text-slate-600">
-                In production, this will be sent through Supabase Auth invite email or your SMTP provider. For this MVP demo, use these details:
+                TAP Admin created this seller login. Share these details with the seller through your preferred channel.
               </p>
               <div className="mt-4 grid gap-3 md:grid-cols-3">
-                <Info label="Email" value={query.inviteEmail} />
-                <Info label="Temporary Password" value={query.invitePassword} />
+                <Info label="Username" value={query.inviteUsername} />
+                <Info label="Password" value={query.invitePassword} />
                 <Info label="Login Page" value={query.inviteLogin} />
               </div>
             </div>
@@ -104,7 +104,7 @@ export default async function EventSellersPage({
                   )}
                   <div>
                     <h2 className="text-2xl font-black text-ink">{seller.company_name}</h2>
-                    <p className="text-slate-600">{seller.email}</p>
+                    <p className="text-slate-600">@{seller.username}</p>
                     {invite ? <p className="mt-1 text-xs font-bold text-slate-500">Invite {invite.status}</p> : null}
                   </div>
                 </div>
@@ -230,7 +230,7 @@ function AddExistingSellerModal({
           <input type="hidden" name="addExisting" value="1" />
           <label className="tap-label min-w-0 flex-1">
             Search Seller
-            <input className="tap-input" name="sellerSearch" defaultValue={sellerSearch} placeholder="Seller name, email, brand, or event" />
+            <input className="tap-input" name="sellerSearch" defaultValue={sellerSearch} placeholder="Seller name, username, brand, or event" />
           </label>
           <button className="tap-button tap-button-secondary self-end" type="submit">
             <Search className="size-4" />
@@ -249,7 +249,7 @@ function AddExistingSellerModal({
                 </option>
                 {sellers.map(({ seller, brands, products }) => (
                   <option key={seller.id} value={seller.id}>
-                    {seller.company_name} - {seller.email || "No email"} - {brands.length} brands / {products.length} products
+                    {seller.company_name} - @{seller.username} - {brands.length} brands / {products.length} products
                   </option>
                 ))}
               </select>
@@ -290,7 +290,7 @@ function AddSellerModal({ eventId }: { eventId: string }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-black text-ink">Add Seller</h2>
-            <p className="mt-2 text-slate-600">Create the seller, assign a booth, add starter products, and queue login details.</p>
+            <p className="mt-2 text-slate-600">Create the seller login, assign a booth, and add starter products.</p>
           </div>
           <Link className="tap-button tap-button-secondary" href={`/admin/events/${eventId}/sellers`} aria-label="Close add seller form">
             <X className="size-4" />
@@ -305,8 +305,8 @@ function AddSellerModal({ eventId }: { eventId: string }) {
               <input className="tap-input" name="seller_name" required placeholder="ABC Trading" />
             </label>
             <label className="tap-label">
-              Email
-              <input className="tap-input" name="email" required type="email" placeholder="seller@example.com" />
+              Username
+              <input className="tap-input" name="username" required autoComplete="username" placeholder="abc-trading" />
             </label>
             <label className="tap-label">
               Seller Password
@@ -349,7 +349,7 @@ function AddSellerModal({ eventId }: { eventId: string }) {
           <AddSellerProductsTable />
 
           <button className="tap-button tap-button-primary min-h-12 w-full md:w-max" type="submit">
-            Create Seller and Queue Login Email
+            Create Seller Login
           </button>
         </form>
       </div>
@@ -385,8 +385,8 @@ function EditEventSellerModal({ eventId, seller, eventSeller }: { eventId: strin
               <input className="tap-input" name="contact_name" defaultValue={seller.contact_name || seller.company_name} />
             </label>
             <label className="tap-label">
-              Email
-              <input className="tap-input" name="email" required type="email" defaultValue={seller.email} />
+              Username
+              <input className="tap-input" name="username" required defaultValue={seller.username} />
             </label>
             <label className="tap-label">
               Phone

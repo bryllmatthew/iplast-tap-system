@@ -1,6 +1,7 @@
 create table if not exists public.seller_invites (
   id uuid primary key default gen_random_uuid(),
   seller_id uuid not null references public.sellers(id) on delete cascade,
+  username text,
   email text not null,
   login_url text not null,
   temporary_password text not null,

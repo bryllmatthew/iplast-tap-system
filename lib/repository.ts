@@ -20,6 +20,7 @@ import {
 } from "@/lib/demo-data";
 import { cleanEnv } from "@/lib/clean-env";
 import { appUrl, canonicalAppUrl } from "@/lib/env";
+import { normalizeSellerUsername, sellerUsernameToAuthEmail } from "@/lib/seller-login";
 import type {
   Attendance,
   Brand,
@@ -83,7 +84,7 @@ const registrationFieldLabels: Record<string, string> = {
 const eventSelect =
   "id,event_name,event_slug,description,venue,address,event_date,start_time,end_time,registration_start,registration_end,maximum_creator_capacity,poster_url,status";
 const sellerSelect =
-  "id,company_name,contact_name,email,phone,shop_code,shop_link,open_plan_commission,tap_commission,logo_url,status";
+  "id,company_name,contact_name,username,email,phone,shop_code,shop_link,open_plan_commission,tap_commission,logo_url,status";
 const productSelect =
   "id,brand_id,product_name,sku,pid,product_link,image_url,description,sample_inventory,max_claims_per_creator,status";
 
@@ -121,11 +122,14 @@ function eventFromRow(row: Record<string, unknown>): Event {
 }
 
 function sellerFromRow(row: Record<string, unknown>): Seller {
+  const email = String(row.email || "");
+  const username = normalizeSellerUsername(String(row.username || email.split("@")[0] || row.company_name || ""));
   return {
     id: String(row.id),
     company_name: String(row.company_name || ""),
     contact_name: String(row.contact_name || ""),
-    email: String(row.email || ""),
+    username,
+    email,
     phone: String(row.phone || ""),
     shop_code: row.shop_code ? String(row.shop_code) : undefined,
     shop_link: row.shop_link ? String(row.shop_link) : undefined,
@@ -328,7 +332,7 @@ async function loadDbStateUncached(): Promise<DemoState | null> {
     supabase.from("products").select(productSelect),
     supabase.from("event_products").select("id,event_id,product_id,available_quantity,max_claims_per_creator,status"),
     supabase.from("sample_claims").select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status"),
-    supabase.from("seller_invites").select("id,seller_id,email,login_url,temporary_password,created_at,status")
+    supabase.from("seller_invites").select("id,seller_id,username,email,login_url,temporary_password,created_at,status")
   ]);
 
   const error = [
@@ -368,6 +372,7 @@ async function loadDbStateUncached(): Promise<DemoState | null> {
     sellerInvites: (sellerInvites.data || []).map((invite) => ({
       id: String(invite.id),
       seller_id: String(invite.seller_id),
+      username: invite.username ? String(invite.username) : undefined,
       email: String(invite.email),
       login_url: String(invite.login_url),
       temporary_password: String(invite.temporary_password),
@@ -853,7 +858,8 @@ export async function updateSeller(formData: FormData, logoUrl?: string) {
   const eventId = String(formData.get("event_id") || "");
   const sellerName = String(formData.get("seller_name") || "").trim();
   const contactName = String(formData.get("contact_name") || sellerName).trim();
-  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const username = normalizeSellerUsername(String(formData.get("username") || "").trim());
+  const email = sellerUsernameToAuthEmail(username);
   const phone = String(formData.get("phone") || "").trim();
   const shopCode = String(formData.get("shop_code") || "").trim();
   const shopLink = String(formData.get("shop_link") || "").trim();
@@ -863,8 +869,8 @@ export async function updateSeller(formData: FormData, logoUrl?: string) {
   const boothName = String(formData.get("booth_name") || sellerName).trim();
   const boothNumber = String(formData.get("booth_number") || "").trim();
 
-  if (!sellerId || !sellerName || !email) {
-    return { ok: false, message: "Seller name and email are required." };
+  if (!sellerId || !sellerName || !username) {
+    return { ok: false, message: "Seller name and username are required." };
   }
 
   const supabase = createServiceClient();
@@ -872,6 +878,7 @@ export async function updateSeller(formData: FormData, logoUrl?: string) {
     const updatePayload: Record<string, string | number | null> = {
       company_name: sellerName,
       contact_name: contactName,
+      username,
       email,
       phone,
       shop_code: shopCode || null,
@@ -881,6 +888,15 @@ export async function updateSeller(formData: FormData, logoUrl?: string) {
       status
     };
     if (logoUrl) updatePayload.logo_url = logoUrl;
+
+    const { data: usernameConflict, error: usernameError } = await supabase
+      .from("sellers")
+      .select("id")
+      .ilike("username", username)
+      .neq("id", sellerId)
+      .limit(1);
+    if (usernameError) return { ok: false, message: usernameError.message };
+    if (usernameConflict?.length) return { ok: false, message: "That seller username is already in use." };
 
     const { data: seller, error } = await supabase
       .from("sellers")
@@ -921,9 +937,13 @@ export async function updateSeller(formData: FormData, logoUrl?: string) {
   const s = state();
   const seller = s.sellers.find((item) => item.id === sellerId);
   if (!seller) return { ok: false, message: "Seller not found." };
+  if (s.sellers.some((item) => item.id !== sellerId && item.username.toLowerCase() === username.toLowerCase())) {
+    return { ok: false, message: "That seller username is already in use." };
+  }
 
   seller.company_name = sellerName;
   seller.contact_name = contactName;
+  seller.username = username;
   seller.email = email;
   seller.phone = phone;
   seller.shop_code = shopCode || undefined;
@@ -997,7 +1017,7 @@ export async function listSellerDatabaseRows(query = "") {
         .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
         .in("seller_id", sellerIds)
         .eq("status", "claimed"),
-      supabase.from("seller_invites").select("id,seller_id,email,login_url,temporary_password,created_at,status").in("seller_id", sellerIds)
+      supabase.from("seller_invites").select("id,seller_id,username,email,login_url,temporary_password,created_at,status").in("seller_id", sellerIds)
     ]);
 
     const eventSellers = (eventSellersResult.data || []).map(eventSellerFromRow);
@@ -1006,6 +1026,7 @@ export async function listSellerDatabaseRows(query = "") {
     const invites = (invitesResult.data || []).map((invite) => ({
       id: String(invite.id),
       seller_id: String(invite.seller_id),
+      username: invite.username ? String(invite.username) : undefined,
       email: String(invite.email),
       login_url: String(invite.login_url),
       temporary_password: String(invite.temporary_password),
@@ -1046,6 +1067,7 @@ export async function listSellerDatabaseRows(query = "") {
         return [
           seller.company_name,
           seller.contact_name,
+          seller.username,
           seller.email,
           seller.phone,
           ...brands.map((brand) => brand.brand_name),
@@ -1074,6 +1096,7 @@ export async function listSellerDatabaseRows(query = "") {
       return [
         seller.company_name,
         seller.contact_name,
+        seller.username,
         seller.email,
         seller.phone,
         ...brands.map((brand) => brand.brand_name),
@@ -1199,7 +1222,8 @@ export async function addExistingSellerToEvent(formData: FormData) {
 export async function addEventSeller(formData: FormData, logoUrl?: string) {
   const eventId = String(formData.get("event_id") || "");
   const sellerName = String(formData.get("seller_name") || "").trim();
-  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const username = normalizeSellerUsername(String(formData.get("username") || "").trim());
+  const email = sellerUsernameToAuthEmail(username);
   const boothNumber = String(formData.get("booth_number") || "").trim();
   const boothName = String(formData.get("booth_name") || sellerName).trim();
   const password = String(formData.get("password") || "").trim();
@@ -1215,8 +1239,8 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
   const brandNames = unique(productBrands.filter(Boolean));
   if (!brandNames.length) brandNames.push(`${sellerName} Brand`);
 
-  if (!eventId || !sellerName || !email || !boothNumber || !password) {
-    return { ok: false, message: "Seller name, email, password, event, and booth number are required." };
+  if (!eventId || !sellerName || !username || !boothNumber || !password) {
+    return { ok: false, message: "Seller name, username, password, event, and booth number are required." };
   }
 
   const supabase = createServiceClient();
@@ -1232,12 +1256,21 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
     if (boothError) return { ok: false, message: boothError.message };
     if (boothConflict?.length) return { ok: false, message: "That booth number is already assigned for this event." };
 
+    const { data: usernameConflict, error: usernameError } = await supabase
+      .from("sellers")
+      .select("id")
+      .ilike("username", username)
+      .limit(1);
+    if (usernameError) return { ok: false, message: usernameError.message };
+    if (usernameConflict?.length) return { ok: false, message: "That seller username is already in use." };
+
     const { data: seller, error: sellerError } = await supabase
       .from("sellers")
       .insert({
         organization_id: defaultOrganizationId,
         company_name: sellerName,
         contact_name: sellerName,
+        username,
         email,
         phone: String(formData.get("phone") || "").trim(),
         shop_code: shopCode || null,
@@ -1314,6 +1347,7 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
     const invite: SellerInvite = {
       id: crypto.randomUUID(),
       seller_id: seller.id,
+      username,
       email,
       login_url: appUrl("/seller"),
       temporary_password: password,
@@ -1322,7 +1356,7 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
     };
     await supabase.from("seller_invites").insert(invite);
 
-    return { ok: true, message: "Seller added and login email queued.", seller: sellerFromRow(seller), invite };
+    return { ok: true, message: "Seller added and login details created.", seller: sellerFromRow(seller), invite };
   }
 
   const s = state();
@@ -1332,11 +1366,15 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
   if (s.eventSellers.some((eventSeller) => eventSeller.event_id === eventId && eventSeller.booth_number.toLowerCase() === boothNumber.toLowerCase())) {
     return { ok: false, message: "That booth number is already assigned for this event." };
   }
+  if (s.sellers.some((seller) => seller.username.toLowerCase() === username.toLowerCase())) {
+    return { ok: false, message: "That seller username is already in use." };
+  }
 
   const seller: Seller = {
     id: uid("sel"),
     company_name: sellerName,
     contact_name: sellerName,
+    username,
     email,
     phone: String(formData.get("phone") || "").trim(),
     shop_code: shopCode || undefined,
@@ -1408,6 +1446,7 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
   const invite: SellerInvite = {
     id: uid("inv"),
     seller_id: seller.id,
+    username,
     email,
     login_url: appUrl("/seller"),
     temporary_password: password,
@@ -1415,7 +1454,7 @@ export async function addEventSeller(formData: FormData, logoUrl?: string) {
     status: "queued"
   };
   s.sellerInvites.unshift(invite);
-  return { ok: true, message: "Seller added and login email queued.", seller, invite };
+  return { ok: true, message: "Seller added and login details created.", seller, invite };
 }
 
 export async function addBrand(formData: FormData) {

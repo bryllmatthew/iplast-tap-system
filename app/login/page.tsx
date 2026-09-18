@@ -24,8 +24,8 @@ export default async function LoginPage({
           <input type="hidden" name="role" value={role} />
           <input type="hidden" name="next" value={next} />
           <label className="tap-label">
-            Username or Email
-            <input className="tap-input" name="username" required autoComplete="username" placeholder={role === "seller" ? "seller@example.com" : "TAPAdmin"} />
+            {role === "seller" ? "Username" : "Username or Email"}
+            <input className="tap-input" name="username" required autoComplete="username" placeholder={role === "seller" ? "abc-trading" : "TAPAdmin"} />
           </label>
           <label className="tap-label">
             Password

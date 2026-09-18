@@ -5,6 +5,7 @@ import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/server";
 import { cleanEnv } from "@/lib/clean-env";
+import { sellerAuthEmailFromIdentifier, sellerUsernameToAuthEmail } from "@/lib/seller-login";
 import type { Role, Seller } from "@/lib/types";
 
 const adminUsername = "TAPAdmin";
@@ -81,16 +82,17 @@ export async function ensureDefaultAdminUser() {
 }
 
 export async function ensureSellerAuthUser(seller: Seller, password: string) {
-  const user = await ensureAuthUser(seller.email, password, seller.contact_name || seller.company_name);
+  const authEmail = sellerUsernameToAuthEmail(seller.username || seller.email.split("@")[0] || seller.company_name);
+  const user = await ensureAuthUser(authEmail, password, seller.contact_name || seller.company_name);
   const admin = createServiceClient();
 
   await admin.from("profiles").upsert({
     id: user.id,
     full_name: seller.contact_name || seller.company_name,
-    email: seller.email
+    email: authEmail
   });
 
-  const { data: existingSeller } = await admin.from("sellers").select("id").eq("email", seller.email).limit(1).maybeSingle();
+  const { data: existingSeller } = await admin.from("sellers").select("id").eq("id", seller.id).limit(1).maybeSingle();
   const { data: dbSeller, error: sellerError } = existingSeller
     ? { data: existingSeller, error: null }
     : await admin
@@ -99,7 +101,8 @@ export async function ensureSellerAuthUser(seller: Seller, password: string) {
       organization_id: defaultOrganizationId,
       company_name: seller.company_name,
       contact_name: seller.contact_name,
-      email: seller.email,
+      username: seller.username,
+      email: authEmail,
       phone: seller.phone,
       logo_url: seller.logo_url,
       status: seller.status
@@ -122,6 +125,7 @@ export async function ensureSellerAuthUser(seller: Seller, password: string) {
 
 export function loginIdentifierToEmail(role: string, identifier: string) {
   if (role !== "seller" && identifier === adminUsername) return adminEmail;
+  if (role === "seller") return sellerAuthEmailFromIdentifier(identifier);
   return identifier;
 }
 

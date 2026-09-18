@@ -124,6 +124,7 @@ export type Seller = {
   id: string;
   company_name: string;
   contact_name: string;
+  username: string;
   email: string;
   phone: string;
   shop_code?: string;
@@ -137,6 +138,7 @@ export type Seller = {
 export type SellerInvite = {
   id: string;
   seller_id: string;
+  username?: string;
   email: string;
   login_url: string;
   temporary_password: string;

@@ -179,6 +179,7 @@ create table public.sellers (
   organization_id uuid not null references public.organizations(id) on delete cascade,
   company_name text not null,
   contact_name text,
+  username text not null,
   email text,
   phone text,
   logo_url text,
@@ -186,6 +187,8 @@ create table public.sellers (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create unique index sellers_username_unique on public.sellers (lower(username));
 
 create table public.seller_users (
   id uuid primary key default gen_random_uuid(),

@@ -377,6 +377,7 @@ export async function resetSellerPasswordAction(formData: FormData) {
           });
           await supabase.from("seller_invites").insert({
             seller_id: detail.seller.id,
+            username: detail.seller.username,
             email: detail.seller.email,
             login_url: appUrl("/seller"),
             temporary_password: password,
@@ -419,7 +420,7 @@ export async function addEventSellerAction(formData: FormData) {
   });
 
   if (result.invite) {
-    params.set("inviteEmail", result.invite.email);
+    params.set("inviteUsername", result.invite.username || result.seller?.username || "");
     params.set("invitePassword", result.invite.temporary_password);
     params.set("inviteLogin", result.invite.login_url);
   }

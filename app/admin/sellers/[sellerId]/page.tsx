@@ -62,7 +62,7 @@ export default async function SellerDetailPage({
             <div>
               <h1 className="text-3xl font-black text-ink">{seller.company_name}</h1>
               <p className="mt-1 text-slate-600">{seller.contact_name || "No contact name"}</p>
-              <p className="mt-1 text-sm font-bold text-cyan-700">{seller.email}</p>
+              <p className="mt-1 text-sm font-bold text-cyan-700">@{seller.username}</p>
               {seller.phone ? <p className="mt-1 text-sm text-slate-500">{seller.phone}</p> : null}
             </div>
           </div>
@@ -79,7 +79,7 @@ export default async function SellerDetailPage({
           <Metric label="Open Plan Commission" value={`${seller.open_plan_commission}%`} />
           <Metric label="TAP Commission" value={`${seller.tap_commission}%`} />
         </div>
-        {invite ? <p className="mt-4 text-xs font-bold text-slate-500">Login invite: {invite.status} - {invite.email}</p> : null}
+        {invite ? <p className="mt-4 text-xs font-bold text-slate-500">Login details: {invite.status} - @{invite.username || seller.username}</p> : null}
       </div>
 
       <section className="tap-card p-5">
@@ -166,8 +166,8 @@ function ResetSellerPasswordModal({ seller }: { seller: Seller }) {
         <form action={resetSellerPasswordAction} className="mt-5 grid gap-4">
           <input type="hidden" name="seller_id" value={seller.id} />
           <label className="tap-label">
-            Seller Email
-            <input className="tap-input" value={seller.email} readOnly />
+            Seller Username
+            <input className="tap-input" value={seller.username} readOnly />
           </label>
           <label className="tap-label">
             New Password
@@ -213,8 +213,8 @@ function EditSellerModal({ seller }: { seller: Seller }) {
               <input className="tap-input" name="contact_name" defaultValue={seller.contact_name || seller.company_name} />
             </label>
             <label className="tap-label">
-              Email
-              <input className="tap-input" name="email" required type="email" defaultValue={seller.email} />
+              Username
+              <input className="tap-input" name="username" required defaultValue={seller.username} />
             </label>
             <label className="tap-label">
               Phone

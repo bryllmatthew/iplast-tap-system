@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mail, Pencil, Search } from "lucide-react";
+import { Pencil, Search, UserRound } from "lucide-react";
 
 import { listSellerDatabaseRows } from "@/lib/repository";
 
@@ -26,7 +26,7 @@ export default async function SellersDatabasePage({
                 <Search className="size-4" />
                 Search
               </span>
-              <input className="tap-input" name="q" placeholder="Seller, brand, email, event" defaultValue={q} />
+              <input className="tap-input" name="q" placeholder="Seller, brand, username, event" defaultValue={q} />
             </label>
           </form>
         </div>
@@ -50,8 +50,8 @@ export default async function SellersDatabasePage({
                   {seller.company_name}
                 </Link>
                 <span className="seller-db-meta mt-1 flex min-w-0 items-center gap-2 text-sm text-slate-500">
-                  <Mail className="size-4 shrink-0 text-cyan-700" />
-                  <span className="truncate">{seller.email}</span>
+                  <UserRound className="size-4 shrink-0 text-cyan-700" />
+                  <span className="truncate">@{seller.username}</span>
                 </span>
               </div>
             </div>

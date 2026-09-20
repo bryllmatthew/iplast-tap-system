@@ -17,7 +17,7 @@ export default async function AdminEventHubPage({
   searchParams
 }: {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ bannerMessage?: string; bannerResult?: string; formMessage?: string; formResult?: string }>;
+  searchParams: Promise<{ bannerMessage?: string; bannerResult?: string; formMessage?: string; formResult?: string; editForm?: string }>;
 }) {
   const { eventId } = await params;
   const query = await searchParams;
@@ -28,6 +28,7 @@ export default async function AdminEventHubPage({
   const sellerDashboard = await listSellerDashboard();
   const approved = registrations.filter((row) => row.registration.registration_status === "approved").length;
   const checkedIn = registrations.filter((row) => row.attendance?.status === "checked_in").length;
+  const showFormEditor = query.editForm === "1";
   const registrationUrl = appUrl(`/events/${event.event_slug}/register`);
   const registrationQrImage = await QRCode.toDataURL(registrationUrl, { margin: 1, width: 420 });
 
@@ -108,12 +109,14 @@ export default async function AdminEventHubPage({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-sm font-black uppercase text-cyan-700">Registration Form</p>
-              <h2 className="mt-2 text-xl font-black text-ink">Choose event registration fields</h2>
+              <h2 className="mt-2 text-xl font-black text-ink">Event registration fields</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Updating this publishes a new form version for future registrations. Existing submitted responses keep their original snapshot.
+                Version {form?.version_number || 1} is active with {form?.fields.length || 0} fields.
               </p>
             </div>
-            <span className="status-pill bg-cyan-50 text-cyan-700">Version {form?.version_number || 1}</span>
+            <Link className="tap-button tap-button-primary" href={`/admin/events/${event.id}?editForm=1`}>
+              Edit Registration Form
+            </Link>
           </div>
           {query.formMessage ? (
             <div
@@ -124,13 +127,23 @@ export default async function AdminEventHubPage({
               {query.formMessage}
             </div>
           ) : null}
-          <form action={updateEventRegistrationFormAction} className="mt-5 grid gap-4">
-            <input type="hidden" name="event_id" value={event.id} />
-            <RegistrationFieldChecklist selectedFieldIds={form?.fields.map((field) => field.id)} />
-            <button className="tap-button tap-button-primary w-full md:w-max" type="submit">
-              Update Registration Fields
-            </button>
-          </form>
+          {showFormEditor ? (
+            <form action={updateEventRegistrationFormAction} className="mt-5 grid gap-4 border-t border-slate-200 pt-5">
+              <input type="hidden" name="event_id" value={event.id} />
+              <p className="text-sm leading-6 text-slate-600">
+                Updating this publishes a new form version for future registrations. Existing submitted responses keep their original snapshot.
+              </p>
+              <RegistrationFieldChecklist selectedFieldIds={form?.fields.map((field) => field.id)} />
+              <div className="flex flex-wrap gap-2">
+                <button className="tap-button tap-button-primary w-full md:w-max" type="submit">
+                  Save Registration Fields
+                </button>
+                <Link className="tap-button tap-button-secondary w-full md:w-max" href={`/admin/events/${event.id}`}>
+                  Cancel
+                </Link>
+              </div>
+            </form>
+          ) : null}
         </section>
 
         <ActionCard

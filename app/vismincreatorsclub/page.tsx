@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { CalendarDays, MapPin, Sparkles } from "lucide-react";
+import { CalendarDays, Clock, MapPin, Sparkles } from "lucide-react";
 
 import { listEvents } from "@/lib/repository";
-import { shortDate } from "@/lib/format";
+import { eventTimeRange, shortDate } from "@/lib/format";
 
 export default async function VisMinCreatorsClubPage() {
   const events = await listEvents();
@@ -48,6 +48,10 @@ export default async function VisMinCreatorsClubPage() {
                     <span className="inline-flex items-center gap-2">
                       <CalendarDays className="size-4 text-cyan-700" />
                       {shortDate(event.event_date)}
+                    </span>
+                    <span className="inline-flex items-center gap-2">
+                      <Clock className="size-4 text-cyan-700" />
+                      {eventTimeRange(event.start_time, event.end_time)}
                     </span>
                     <span className="inline-flex items-center gap-2">
                       <MapPin className="size-4 text-cyan-700" />

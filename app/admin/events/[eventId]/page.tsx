@@ -9,7 +9,7 @@ import { EventRegistrationQrActions } from "@/components/EventRegistrationQrActi
 import { RegistrationFieldChecklist } from "@/components/RegistrationFieldChecklist";
 import { appUrl } from "@/lib/env";
 import { eventTimeRange, number, shortDate } from "@/lib/format";
-import { getEventById, getPublishedForm, listRegistrations, listSellerDashboard } from "@/lib/repository";
+import { getEventById, getPublishedForm, listEventSellerRows, listRegistrations } from "@/lib/repository";
 import { eventStatusClass } from "@/lib/status";
 
 export default async function AdminEventHubPage({
@@ -33,9 +33,10 @@ export default async function AdminEventHubPage({
   if (!event) notFound();
   const registrations = await listRegistrations(eventId);
   const form = await getPublishedForm(eventId);
-  const sellerDashboard = await listSellerDashboard();
+  const eventSellerRows = await listEventSellerRows(eventId);
   const approved = registrations.filter((row) => row.registration.registration_status === "approved").length;
   const checkedIn = registrations.filter((row) => row.attendance?.status === "checked_in").length;
+  const enrolledProducts = new Set(eventSellerRows.flatMap((row) => row.eventProducts.map((eventProduct) => eventProduct.product_id)));
   const showFormEditor = query.editForm === "1";
   const registrationUrl = appUrl(`/events/${event.event_slug}/register`);
   const registrationQrImage = await QRCode.toDataURL(registrationUrl, { margin: 1, width: 420 });
@@ -117,7 +118,7 @@ export default async function AdminEventHubPage({
         <Metric icon={<ClipboardList className="size-4" />} label="Registrants" value={number(registrations.length)} />
         <Metric icon={<BadgeCheck className="size-4" />} label="Approved" value={number(approved)} />
         <Metric icon={<QrCode className="size-4" />} label="Checked In" value={number(checkedIn)} />
-        <Metric icon={<Store className="size-4" />} label="Products" value={number(sellerDashboard.products.length)} />
+        <Metric icon={<Store className="size-4" />} label="Event Products" value={number(enrolledProducts.size)} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

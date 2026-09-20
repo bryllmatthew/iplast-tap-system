@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { currency, number, shortDate, time } from "@/lib/format";
+import { creatorPlatformTags } from "@/lib/platform-tags";
 import { getCreatorDetail } from "@/lib/repository";
 import { registrationStatusClass } from "@/lib/status";
 
@@ -16,6 +17,11 @@ export default async function CreatorDetailPage({
   const { creator, registrations, sampleClaims } = detail;
   const attended = registrations.filter((item) => item.attendance?.status === "checked_in");
   const brandsVisited = new Set(sampleClaims.map((item) => item.brand.id)).size;
+  const latestResponse = registrations.find((item) => item.response)?.response;
+  const platformTags = creatorPlatformTags(latestResponse);
+  const latestAnswers = latestResponse?.answers || {};
+  const tikTokGmv = Number(latestAnswers.tiktok_last_month_gmv || latestAnswers.gmv_max_total || 0);
+  const shopeeGmv = Number(latestAnswers.shopee_last_month_gmv || 0);
 
   return (
     <section className="space-y-5">
@@ -30,6 +36,13 @@ export default async function CreatorDetailPage({
             <a className="mt-2 inline-flex max-w-full break-all font-bold text-cyan-700 underline" href={creator.tiktok_profile_url} target="_blank" rel="noreferrer">
               TikTok profile
             </a>
+            {platformTags.length ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {platformTags.map((tag) => (
+                  <span key={tag} className="status-pill bg-cyan-50 text-cyan-700">{tag}</span>
+                ))}
+              </div>
+            ) : null}
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <Metric label="Events Attended" value={number(attended.length)} />
@@ -47,7 +60,8 @@ export default async function CreatorDetailPage({
             <Info label="Mobile" value={creator.mobile} />
             <Info label="Location" value={creator.location} />
             <Info label="Followers" value={number(creator.follower_count)} />
-            <Info label="GMV Max" value={currency(creator.gmv_max_total)} />
+            <Info label="TikTok Last Month GMV" value={currency(tikTokGmv)} />
+            <Info label="Shopee Last Month GMV" value={currency(shopeeGmv)} />
             <Info label="Content Categories" value={creator.content_categories.join(", ")} />
             <Info label="Affiliate Experience" value={creator.affiliate_experience} />
             <Info label="Notes" value={creator.notes || "-"} />

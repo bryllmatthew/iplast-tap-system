@@ -447,6 +447,14 @@ function mapBy<T>(rows: T[], key: (row: T) => string) {
   return new Map(rows.map((row) => [key(row), row]));
 }
 
+function creatorMaxGmvFromAnswers(answers: Record<string, unknown>) {
+  return Math.max(
+    Number(answers.gmv_max_total || 0),
+    Number(answers.tiktok_last_month_gmv || 0),
+    Number(answers.shopee_last_month_gmv || 0)
+  );
+}
+
 function ensureCreatorQr(registration: Registration, status?: CreatorQr["status"]) {
   const s = state();
   let qr = s.qrs.find((item) => item.event_id === registration.event_id && item.creator_id === registration.creator_id);
@@ -2012,25 +2020,36 @@ export async function listAttendedCreators(query = "") {
     ]);
 
     const creators = mapById((creatorsResult.data || []).map(creatorFromRow));
-    const registrations = mapById((registrationsResult.data || []).map(registrationFromRow));
+    const registrationsRaw = (registrationsResult.data || []).map(registrationFromRow);
+    const registrations = mapById(registrationsRaw);
     const events = mapById((eventsResult.data || []).map(eventFromRow));
     const claims = (claimsResult.data || []).map(claimFromRow);
+    const responseIds = unique(registrationsRaw.map((registration) => registration.form_response_id));
+    const { data: responseRows } = responseIds.length
+      ? await supabase
+        .from("event_form_responses")
+        .select("id,event_id,creator_id,form_version_id,field_snapshot,answers,submitted_at")
+        .in("id", responseIds)
+      : { data: [] };
+    const responses = mapById((responseRows || []).map(formResponseFromRow));
 
     return attendanceRowsMapped
       .map((attendance) => {
         const creator = creators.get(attendance.creator_id)!;
+        const registration = registrations.get(attendance.registration_id)!;
         return {
           creator,
           attendance,
-          registration: registrations.get(attendance.registration_id)!,
+          registration,
+          response: registration ? responses.get(registration.form_response_id) : undefined,
           event: events.get(attendance.event_id) || demoEvent,
           claims: claims.filter((claim) => claim.creator_id === attendance.creator_id)
         };
       })
       .filter((row) => row.creator && row.registration)
-      .filter(({ creator }) => {
+      .filter(({ creator, response }) => {
         if (!needle) return true;
-        return [creator.full_name, creator.tiktok_username, creator.email, creator.mobile].some((value) =>
+        return [creator.full_name, creator.tiktok_username, creator.email, creator.mobile, ...Object.values(response?.answers || {}).map(String)].some((value) =>
           value.toLowerCase().includes(needle)
         );
       });
@@ -2043,13 +2062,14 @@ export async function listAttendedCreators(query = "") {
     .map((attendance) => {
       const creator = s.creators.find((item) => item.id === attendance.creator_id)!;
       const registration = s.registrations.find((item) => item.id === attendance.registration_id)!;
+      const response = s.responses.find((item) => item.id === registration.form_response_id);
       const event = s.events.find((item) => item.id === attendance.event_id) || demoEvent;
       const claims = s.claims.filter((claim) => claim.creator_id === creator.id && claim.status === "claimed");
-      return { creator, attendance, registration, event, claims };
+      return { creator, attendance, registration, response, event, claims };
     })
-    .filter(({ creator }) => {
+    .filter(({ creator, response }) => {
       if (!needle) return true;
-      return [creator.full_name, creator.tiktok_username, creator.email, creator.mobile].some((value) =>
+      return [creator.full_name, creator.tiktok_username, creator.email, creator.mobile, ...Object.values(response?.answers || {}).map(String)].some((value) =>
         value.toLowerCase().includes(needle)
       );
     });
@@ -2226,7 +2246,7 @@ export async function submitRegistration(slug: string, formData: FormData) {
           mobile,
           location: String(answers.location || ""),
           follower_count: Number(answers.follower_count || 0),
-          gmv_max_total: Number(answers.gmv_max_total || 0),
+          gmv_max_total: creatorMaxGmvFromAnswers(answers),
           creator_category: String(answers.creator_category || ""),
           content_categories: String(answers.content_categories || "")
             .split(",")
@@ -2315,7 +2335,7 @@ export async function submitRegistration(slug: string, formData: FormData) {
       mobile,
       location: String(answers.location || ""),
       follower_count: Number(answers.follower_count || 0),
-      gmv_max_total: Number(answers.gmv_max_total || 0),
+      gmv_max_total: creatorMaxGmvFromAnswers(answers),
       creator_category: String(answers.creator_category || ""),
       content_categories: String(answers.content_categories || "")
         .split(",")

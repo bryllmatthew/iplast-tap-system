@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Pencil, Search, UserRound } from "lucide-react";
 
+import { sellerPlatformTags } from "@/lib/platform-tags";
 import { listSellerDatabaseRows } from "@/lib/repository";
 
 export default async function SellersDatabasePage({
@@ -42,7 +43,9 @@ export default async function SellersDatabasePage({
       </div>
 
       <div className="tap-card divide-y divide-slate-100 overflow-hidden">
-        {rows.map(({ seller }) => (
+        {rows.map(({ seller, brands, products, events }) => {
+          const tags = sellerPlatformTags(seller, brands, products, events.map((event) => event.event_name));
+          return (
           <div key={seller.id} className="seller-db-row flex items-center justify-between gap-3 px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
@@ -53,6 +56,13 @@ export default async function SellersDatabasePage({
                   <UserRound className="size-4 shrink-0 text-cyan-700" />
                   <span className="truncate">@{seller.username}</span>
                 </span>
+                {tags.length ? (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {tags.map((tag) => (
+                      <span key={tag} className="status-pill bg-cyan-50 text-cyan-700">{tag}</span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -63,7 +73,8 @@ export default async function SellersDatabasePage({
               </Link>
             </div>
           </div>
-        ))}
+          );
+        })}
         {rows.length === 0 ? <div className="p-8 text-center text-slate-500">No sellers found.</div> : null}
       </div>
     </section>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { createEventAction } from "@/app/actions";
+import { RegistrationFieldChecklist } from "@/components/RegistrationFieldChecklist";
 
 export default async function NewEventPage({
   searchParams
@@ -63,6 +64,13 @@ export default async function NewEventPage({
           Description
           <textarea className="tap-input min-h-28" name="description" placeholder="Short public event description." />
         </label>
+        <section className="grid gap-3">
+          <div>
+            <h2 className="text-xl font-black text-ink">Registration Fields</h2>
+            <p className="mt-1 text-sm text-slate-500">Choose the fields creators will see when registering for this event.</p>
+          </div>
+          <RegistrationFieldChecklist />
+        </section>
         <button className="tap-button tap-button-primary w-full md:w-max" type="submit">
           Create Event
         </button>

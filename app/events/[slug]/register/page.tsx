@@ -1,57 +1,26 @@
-import { CheckCircle2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, MapPin } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { submitRegistrationAction } from "@/app/actions";
+import { registrationFieldPlaceholder } from "@/lib/registration-fields";
 import { getEventBySlug, getPublishedForm } from "@/lib/repository";
-import { shortDate } from "@/lib/format";
+import { eventTimeRange, shortDate } from "@/lib/format";
 import type { FieldType, FormField } from "@/lib/types";
 
-const requiredFieldIds = new Set([
-  "full_name",
-  "email",
-  "mobile",
-  "tiktok_username",
-  "tiktok_profile_url",
-  "location",
-  "follower_count",
-  "gmv_max_total",
-  "creator_category"
-]);
-
-const fieldOverrides: Record<
-  string,
-  {
-    label?: string;
-    fieldType?: FieldType;
-    options?: string[];
-    placeholder?: string;
-  }
-> = {
-  full_name: { label: "Name" },
-  mobile: { label: "Viber Number" },
-  tiktok_username: { label: "TikTok Username  (@xxxxxx)", placeholder: "@xxxxxx" },
-  tiktok_profile_url: { label: "TikTok Profile link", placeholder: "https://www.tiktok.com/@xxxxxx" },
-  follower_count: { label: "Follower count" },
-  gmv_max_total: { label: "Last Month GMV" },
-  creator_category: { label: "Creator Category" },
-  content_categories: { label: "Content Categories/Niche" },
-  affiliate_experience: {
-    label: "Content Format",
-    fieldType: "single_select",
-    options: ["LIVE Only", "Video Only", "Both LIVE and Video"]
-  }
-};
-
 function displayField(field: FormField) {
-  const override = fieldOverrides[field.id] || {};
   return {
     ...field,
-    label: override.label || field.label,
-    field_type: override.fieldType || field.field_type,
-    options: override.options || field.options,
-    placeholder: override.placeholder,
-    required: requiredFieldIds.has(field.id)
+    placeholder: registrationFieldPlaceholder(field.id)
   };
+}
+
+function inputType(fieldType: FieldType) {
+  if (fieldType === "number") return "number";
+  if (fieldType === "email") return "email";
+  if (fieldType === "url") return "url";
+  if (fieldType === "phone") return "tel";
+  if (fieldType === "date") return "date";
+  return "text";
 }
 
 export default async function RegisterPage({
@@ -76,7 +45,26 @@ export default async function RegisterPage({
         <div className="space-y-3 p-5">
           <span className="status-pill bg-green-50 text-green-700">{event.status}</span>
           <h1 className="text-2xl font-black text-ink">{event.event_name}</h1>
-          <p className="text-slate-600">{shortDate(event.event_date)} at {event.venue}</p>
+          <div className="grid gap-2 text-sm font-bold text-slate-500">
+            <span className="inline-flex items-start gap-2">
+              <CalendarDays className="mt-0.5 size-4 shrink-0 text-cyan-700" />
+              {shortDate(event.event_date)}
+            </span>
+            <span className="inline-flex items-start gap-2">
+              <Clock className="mt-0.5 size-4 shrink-0 text-cyan-700" />
+              {eventTimeRange(event.start_time, event.end_time)}
+            </span>
+            <span className="inline-flex items-start gap-2">
+              <MapPin className="mt-0.5 size-4 shrink-0 text-cyan-700" />
+              {event.venue}
+            </span>
+            {event.address && event.address !== event.venue ? (
+              <span className="inline-flex items-start gap-2">
+                <MapPin className="mt-0.5 size-4 shrink-0 text-cyan-700" />
+                {event.address}
+              </span>
+            ) : null}
+          </div>
           <p className="text-sm leading-6 text-slate-500">{event.description}</p>
         </div>
       </aside>
@@ -131,7 +119,7 @@ export default async function RegisterPage({
                       name={field.id}
                       required={field.required}
                       placeholder={field.placeholder}
-                      type={field.field_type === "number" ? "number" : field.field_type === "email" ? "email" : "text"}
+                      type={inputType(field.field_type)}
                     />
                   )}
                 </label>

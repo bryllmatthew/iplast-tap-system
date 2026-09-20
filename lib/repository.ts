@@ -20,6 +20,7 @@ import {
 } from "@/lib/demo-data";
 import { cleanEnv } from "@/lib/clean-env";
 import { appUrl, canonicalAppUrl } from "@/lib/env";
+import { defaultRegistrationFields, registrationFieldsFromFormData } from "@/lib/registration-fields";
 import { normalizeSellerUsername, sellerUsernameToAuthEmail } from "@/lib/seller-login";
 import type {
   Attendance,
@@ -56,31 +57,10 @@ type DemoState = {
   eventProducts: EventProduct[];
   claims: SampleClaim[];
   sellerInvites: SellerInvite[];
+  forms: FormVersion[];
 };
 
 const defaultOrganizationId = "00000000-0000-0000-0000-000000000001";
-const registrationRequiredFieldIds = new Set([
-  "full_name",
-  "email",
-  "mobile",
-  "tiktok_username",
-  "tiktok_profile_url",
-  "location",
-  "follower_count",
-  "gmv_max_total",
-  "creator_category"
-]);
-const registrationFieldLabels: Record<string, string> = {
-  full_name: "Name",
-  email: "Email",
-  mobile: "Viber Number",
-  tiktok_username: "TikTok Username",
-  tiktok_profile_url: "TikTok Profile link",
-  location: "Location",
-  follower_count: "Follower count",
-  gmv_max_total: "Last Month GMV",
-  creator_category: "Creator Category"
-};
 const eventSelect =
   "id,event_name,event_slug,description,venue,address,event_date,start_time,end_time,registration_start,registration_end,maximum_creator_capacity,poster_url,status";
 const sellerSelect =
@@ -378,7 +358,8 @@ async function loadDbStateUncached(): Promise<DemoState | null> {
       temporary_password: String(invite.temporary_password),
       created_at: String(invite.created_at),
       status: String(invite.status || "queued") as SellerInvite["status"]
-    }))
+    })),
+    forms: []
   };
 }
 
@@ -416,7 +397,8 @@ function state(): DemoState {
       products: structuredClone(demoProducts),
       eventProducts: structuredClone(demoEventProducts),
       claims: structuredClone(demoClaims),
-      sellerInvites: []
+      sellerInvites: [],
+      forms: structuredClone([demoForm])
     };
   }
 
@@ -437,6 +419,9 @@ function state(): DemoState {
   }
   if (!global.tapDemoState.sellerInvites) {
     global.tapDemoState.sellerInvites = [];
+  }
+  if (!global.tapDemoState.forms) {
+    global.tapDemoState.forms = structuredClone([demoForm]);
   }
 
   return global.tapDemoState;
@@ -575,6 +560,76 @@ export async function getEventById(id: string) {
   return state().events.find((event) => event.id === id) || null;
 }
 
+async function publishRegistrationFormVersion(eventId: string, fields: FormField[]) {
+  const supabase = createServiceClient();
+  if (!supabase) return null;
+
+  let formId: string;
+  const { data: existingForm, error: formLookupError } = await supabase
+    .from("event_forms")
+    .select("id,active_version_id")
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (formLookupError) throw formLookupError;
+
+  if (existingForm?.id) {
+    formId = String(existingForm.id);
+  } else {
+    const { data: form, error: formError } = await supabase.from("event_forms").insert({ event_id: eventId }).select("id").single();
+    if (formError) throw formError;
+    formId = String(form.id);
+  }
+
+  const { data: latestVersion, error: latestVersionError } = await supabase
+    .from("event_form_versions")
+    .select("version_number")
+    .eq("form_id", formId)
+    .order("version_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (latestVersionError) throw latestVersionError;
+
+  const versionNumber = Number(latestVersion?.version_number || 0) + 1;
+  const { data: version, error: versionError } = await supabase
+    .from("event_form_versions")
+    .insert({
+      form_id: formId,
+      version_number: versionNumber,
+      status: "published",
+      published_at: new Date().toISOString()
+    })
+    .select("id")
+    .single();
+  if (versionError) throw versionError;
+
+  const versionId = String(version.id);
+  const { error: fieldsError } = await supabase.from("event_form_fields").insert(
+    fields.map((field, index) => ({
+      form_version_id: versionId,
+      label: field.label,
+      field_key: field.id,
+      field_type: field.field_type,
+      required: field.required,
+      options: field.options || [],
+      sort_order: field.sort_order || index + 1
+    }))
+  );
+  if (fieldsError) throw fieldsError;
+
+  if (existingForm?.active_version_id) {
+    await supabase
+      .from("event_form_versions")
+      .update({ status: "archived" })
+      .eq("id", existingForm.active_version_id)
+      .neq("id", versionId);
+  }
+
+  const { error: updateError } = await supabase.from("event_forms").update({ active_version_id: versionId }).eq("id", formId);
+  if (updateError) throw updateError;
+
+  return { id: versionId, version_number: versionNumber };
+}
+
 export async function getPublishedForm(eventId: string) {
   const event = await getEventById(eventId);
   if (!event) return null;
@@ -587,45 +642,20 @@ export async function getPublishedForm(eventId: string) {
       .maybeSingle();
     if (formError) throw formError;
 
-    let formId = existingForm?.id;
     let versionId = existingForm?.active_version_id;
 
-    if (!formId) {
-      const { data: form, error } = await supabase.from("event_forms").insert({ event_id: eventId }).select("id").single();
-      if (error) throw error;
-      formId = form.id;
-    }
-
     if (!versionId) {
-      const { data: version, error } = await supabase
-        .from("event_form_versions")
-        .insert({
-          form_id: formId,
-          version_number: 1,
-          status: "published",
-          published_at: new Date().toISOString()
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      versionId = version.id;
-
-      const { error: fieldsError } = await supabase.from("event_form_fields").insert(
-        demoForm.fields.map((field) => ({
-          form_version_id: versionId,
-          label: field.label,
-          field_key: field.id,
-          field_type: field.field_type,
-          required: field.required,
-          options: field.options || [],
-          sort_order: field.sort_order
-        }))
-      );
-      if (fieldsError) throw fieldsError;
-
-      const { error: updateError } = await supabase.from("event_forms").update({ active_version_id: versionId }).eq("id", formId);
-      if (updateError) throw updateError;
+      const version = await publishRegistrationFormVersion(eventId, defaultRegistrationFields());
+      versionId = version?.id;
     }
+
+    if (!versionId) return null;
+    const { data: versionRow, error: versionError } = await supabase
+      .from("event_form_versions")
+      .select("version_number,published_at,status")
+      .eq("id", versionId)
+      .maybeSingle();
+    if (versionError) throw versionError;
 
     const { data: fields, error: fieldsError } = await supabase
       .from("event_form_fields")
@@ -637,9 +667,9 @@ export async function getPublishedForm(eventId: string) {
     return {
       id: String(versionId),
       event_id: eventId,
-      version_number: 1,
+      version_number: Number(versionRow?.version_number || 1),
       status: "published",
-      published_at: new Date().toISOString(),
+      published_at: String(versionRow?.published_at || new Date().toISOString()),
       fields: fields.map((field) => ({
         id: String(field.field_key),
         label: String(field.label),
@@ -651,11 +681,19 @@ export async function getPublishedForm(eventId: string) {
     } satisfies FormVersion;
   }
 
-  return {
-    ...demoForm,
+  const existing = state().forms.find((form) => form.event_id === eventId);
+  if (existing) return existing;
+
+  const form: FormVersion = {
     id: `formv_${eventId}_1`,
-    event_id: eventId
+    event_id: eventId,
+    version_number: 1,
+    status: "published",
+    published_at: new Date().toISOString(),
+    fields: defaultRegistrationFields()
   };
+  state().forms.unshift(form);
+  return form;
 }
 
 export async function createEvent(formData: FormData, posterUrl?: string) {
@@ -667,6 +705,7 @@ export async function createEvent(formData: FormData, posterUrl?: string) {
   const startTime = String(formData.get("start_time") || "10:00");
   const endTime = String(formData.get("end_time") || "17:00");
   const capacity = Number(formData.get("maximum_creator_capacity") || 300);
+  const registrationFields = registrationFieldsFromFormData(formData);
 
   if (!name || !eventDate || !venue) {
     return { ok: false, message: "Event name, date, and location are required." };
@@ -733,11 +772,65 @@ export async function createEvent(formData: FormData, posterUrl?: string) {
       .single();
 
     if (error) return { ok: false, message: error.message };
+    try {
+      await publishRegistrationFormVersion(event.id, registrationFields);
+    } catch (formError) {
+      console.error("Failed to create event registration form", formError);
+      return { ok: false, message: formError instanceof Error ? formError.message : "Event created, but registration form setup failed." };
+    }
     return { ok: true, message: "Event created.", event: eventFromRow(data) };
   }
 
   state().events.unshift(event);
+  state().forms.unshift({
+    id: `formv_${event.id}_1`,
+    event_id: event.id,
+    version_number: 1,
+    status: "published",
+    published_at: new Date().toISOString(),
+    fields: registrationFields
+  });
   return { ok: true, message: "Event created.", event };
+}
+
+export async function updateEventRegistrationForm(eventId: string, formData: FormData) {
+  if (!eventId) return { ok: false, message: "Event is required." };
+  const event = await getEventById(eventId);
+  if (!event) return { ok: false, message: "Event not found." };
+
+  const fields = registrationFieldsFromFormData(formData);
+  if (!fields.length) return { ok: false, message: "Choose at least one registration field." };
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    try {
+      const version = await publishRegistrationFormVersion(eventId, fields);
+      return {
+        ok: true,
+        message: `Registration form updated to version ${version?.version_number || ""}.`.trim(),
+        event
+      };
+    } catch (error) {
+      console.error("Failed to update event registration form", error);
+      return { ok: false, message: error instanceof Error ? error.message : "Could not update registration form." };
+    }
+  }
+
+  const s = state();
+  const currentVersion = s.forms
+    .filter((form) => form.event_id === eventId)
+    .reduce((highest, form) => Math.max(highest, form.version_number), 0);
+  s.forms = s.forms.map((form) => (form.event_id === eventId ? { ...form, status: "archived" } : form));
+  s.forms.unshift({
+    id: `formv_${eventId}_${currentVersion + 1}`,
+    event_id: eventId,
+    version_number: currentVersion + 1,
+    status: "published",
+    published_at: new Date().toISOString(),
+    fields
+  });
+
+  return { ok: true, message: `Registration form updated to version ${currentVersion + 1}.`, event };
 }
 
 export async function updateEventBanner(eventId: string, posterUrl: string) {
@@ -2088,9 +2181,9 @@ export async function submitRegistration(slug: string, formData: FormData) {
   if (!form) return { ok: false, message: "Registration is not open." };
 
   const answers = Object.fromEntries(formData.entries());
-  for (const fieldId of registrationRequiredFieldIds) {
-    if (!String(answers[fieldId] || "").trim()) {
-      return { ok: false, message: `${registrationFieldLabels[fieldId] || fieldId} is required.` };
+  for (const field of form.fields) {
+    if (field.required && !String(answers[field.id] || "").trim()) {
+      return { ok: false, message: `${field.label} is required.` };
     }
   }
 

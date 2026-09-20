@@ -3,12 +3,13 @@ import { notFound } from "next/navigation";
 import { BadgeCheck, ClipboardList, QrCode, Store } from "lucide-react";
 import QRCode from "qrcode";
 
-import { updateEventBannerAction } from "@/app/actions";
+import { updateEventBannerAction, updateEventRegistrationFormAction } from "@/app/actions";
 import { DeleteEventButton } from "@/components/DeleteEventButton";
 import { EventRegistrationQrActions } from "@/components/EventRegistrationQrActions";
+import { RegistrationFieldChecklist } from "@/components/RegistrationFieldChecklist";
 import { appUrl } from "@/lib/env";
 import { number, shortDate } from "@/lib/format";
-import { getEventById, listRegistrations, listSellerDashboard } from "@/lib/repository";
+import { getEventById, getPublishedForm, listRegistrations, listSellerDashboard } from "@/lib/repository";
 import { eventStatusClass } from "@/lib/status";
 
 export default async function AdminEventHubPage({
@@ -16,13 +17,14 @@ export default async function AdminEventHubPage({
   searchParams
 }: {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ bannerMessage?: string; bannerResult?: string }>;
+  searchParams: Promise<{ bannerMessage?: string; bannerResult?: string; formMessage?: string; formResult?: string }>;
 }) {
   const { eventId } = await params;
   const query = await searchParams;
   const event = await getEventById(eventId);
   if (!event) notFound();
   const registrations = await listRegistrations(eventId);
+  const form = await getPublishedForm(eventId);
   const sellerDashboard = await listSellerDashboard();
   const approved = registrations.filter((row) => row.registration.registration_status === "approved").length;
   const checkedIn = registrations.filter((row) => row.attendance?.status === "checked_in").length;
@@ -100,6 +102,35 @@ export default async function AdminEventHubPage({
               </div>
             </div>
           </div>
+        </section>
+
+        <section className="tap-card p-5 md:col-span-2">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-black uppercase text-cyan-700">Registration Form</p>
+              <h2 className="mt-2 text-xl font-black text-ink">Choose event registration fields</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Updating this publishes a new form version for future registrations. Existing submitted responses keep their original snapshot.
+              </p>
+            </div>
+            <span className="status-pill bg-cyan-50 text-cyan-700">Version {form?.version_number || 1}</span>
+          </div>
+          {query.formMessage ? (
+            <div
+              className={`mt-4 rounded-lg border p-3 text-sm font-bold ${
+                query.formResult === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"
+              }`}
+            >
+              {query.formMessage}
+            </div>
+          ) : null}
+          <form action={updateEventRegistrationFormAction} className="mt-5 grid gap-4">
+            <input type="hidden" name="event_id" value={event.id} />
+            <RegistrationFieldChecklist selectedFieldIds={form?.fields.map((field) => field.id)} />
+            <button className="tap-button tap-button-primary w-full md:w-max" type="submit">
+              Update Registration Fields
+            </button>
+          </form>
         </section>
 
         <ActionCard

@@ -23,7 +23,8 @@ import {
   updateSeller,
   updateProduct,
   updateEventProductInventory,
-  updateEventBanner
+  updateEventBanner,
+  updateEventRegistrationForm
 } from "@/lib/repository";
 import { ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, requireAuth, userHasRole } from "@/lib/auth";
 import { cleanEnv } from "@/lib/clean-env";
@@ -258,6 +259,24 @@ export async function updateEventBannerAction(formData: FormData) {
   }
   revalidatePath(`/admin/events/${eventId}`);
   revalidatePath("/admin/events");
+  redirect(`/admin/events/${eventId}?${params.toString()}`);
+}
+
+export async function updateEventRegistrationFormAction(formData: FormData) {
+  await requireAuth("admin");
+
+  const eventId = String(formData.get("event_id") || "");
+  const result = await updateEventRegistrationForm(eventId, formData);
+  const params = new URLSearchParams({
+    formMessage: result.message,
+    formResult: result.ok ? "success" : "error"
+  });
+
+  revalidatePath(`/admin/events/${eventId}`);
+  if (result.event) {
+    revalidatePath(`/events/${result.event.event_slug}/register`);
+  }
+
   redirect(`/admin/events/${eventId}?${params.toString()}`);
 }
 

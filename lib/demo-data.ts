@@ -1,4 +1,5 @@
 import { appUrl } from "@/lib/env";
+import { defaultRegistrationFields } from "@/lib/registration-fields";
 import type {
   Attendance,
   Brand,
@@ -41,40 +42,7 @@ export const demoForm: FormVersion = {
   version_number: 1,
   status: "published",
   published_at: "2026-08-01T08:00:00+08:00",
-  fields: [
-    { id: "full_name", label: "Name", field_type: "short_text", required: true, sort_order: 1 },
-    { id: "tiktok_username", label: "TikTok Username  (@xxxxxx)", field_type: "short_text", required: true, sort_order: 2 },
-    { id: "tiktok_profile_url", label: "TikTok Profile link", field_type: "url", required: true, sort_order: 3 },
-    { id: "mobile", label: "Viber Number", field_type: "phone", required: true, sort_order: 4 },
-    { id: "email", label: "Email", field_type: "email", required: true, sort_order: 5 },
-    { id: "location", label: "Location", field_type: "short_text", required: true, sort_order: 6 },
-    { id: "follower_count", label: "Follower count", field_type: "number", required: true, sort_order: 7 },
-    { id: "gmv_max_total", label: "Last Month GMV", field_type: "number", required: true, sort_order: 8 },
-    {
-      id: "creator_category",
-      label: "Creator Category",
-      field_type: "single_select",
-      required: true,
-      options: ["Beauty", "Fashion", "Food", "Electronics", "Home", "Health", "Lifestyle"],
-      sort_order: 9
-    },
-    {
-      id: "content_categories",
-      label: "Content Categories/Niche",
-      field_type: "multi_select",
-      required: false,
-      options: ["Beauty", "Fashion", "Food", "Electronics", "Home", "Health", "Lifestyle"],
-      sort_order: 10
-    },
-    {
-      id: "affiliate_experience",
-      label: "Content Format",
-      field_type: "single_select",
-      required: false,
-      options: ["LIVE Only", "Video Only", "Both LIVE and Video"],
-      sort_order: 11
-    }
-  ]
+  fields: defaultRegistrationFields()
 };
 
 export const demoCreators: Creator[] = [

@@ -27,10 +27,7 @@ export function eventTimeRange(startTime: string, endTime: string) {
 
 function formatClockTime(value: string) {
   const [hourValue, minuteValue = "0"] = value.split(":");
-  const date = new Date();
-  date.setHours(Number(hourValue), Number(minuteValue), 0, 0);
-
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(date);
+  return `${String(Number(hourValue)).padStart(2, "0")}:${String(Number(minuteValue)).padStart(2, "0")}`;
 }
 
 export function time(value: string) {

@@ -3,12 +3,12 @@ import { notFound } from "next/navigation";
 import { BadgeCheck, ClipboardList, QrCode, Store } from "lucide-react";
 import QRCode from "qrcode";
 
-import { updateEventBannerAction, updateEventRegistrationFormAction } from "@/app/actions";
+import { updateEventBannerAction, updateEventRegistrationFormAction, updateEventScheduleAction } from "@/app/actions";
 import { DeleteEventButton } from "@/components/DeleteEventButton";
 import { EventRegistrationQrActions } from "@/components/EventRegistrationQrActions";
 import { RegistrationFieldChecklist } from "@/components/RegistrationFieldChecklist";
 import { appUrl } from "@/lib/env";
-import { number, shortDate } from "@/lib/format";
+import { eventTimeRange, number, shortDate } from "@/lib/format";
 import { getEventById, getPublishedForm, listRegistrations, listSellerDashboard } from "@/lib/repository";
 import { eventStatusClass } from "@/lib/status";
 
@@ -17,7 +17,15 @@ export default async function AdminEventHubPage({
   searchParams
 }: {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ bannerMessage?: string; bannerResult?: string; formMessage?: string; formResult?: string; editForm?: string }>;
+  searchParams: Promise<{
+    bannerMessage?: string;
+    bannerResult?: string;
+    scheduleMessage?: string;
+    scheduleResult?: string;
+    formMessage?: string;
+    formResult?: string;
+    editForm?: string;
+  }>;
 }) {
   const { eventId } = await params;
   const query = await searchParams;
@@ -39,8 +47,39 @@ export default async function AdminEventHubPage({
         <div className="p-5">
           <span className={`status-pill ${eventStatusClass(event.status)}`}>{event.status}</span>
           <h1 className="mt-3 text-3xl font-black text-ink">{event.event_name}</h1>
-          <p className="mt-2 text-slate-600">{shortDate(event.event_date)} - {event.venue}</p>
+          <p className="mt-2 text-slate-600">
+            {shortDate(event.event_date)} at {eventTimeRange(event.start_time, event.end_time)} - {event.venue}
+          </p>
           <p className="mt-2 max-w-3xl text-slate-600">{event.description}</p>
+          <form action={updateEventScheduleAction} className="mt-5 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">
+            <input type="hidden" name="event_id" value={event.id} />
+            <label className="tap-label">
+              Event Date
+              <input className="tap-input" name="event_date" required type="date" defaultValue={event.event_date} />
+            </label>
+            <label className="tap-label">
+              Start Time
+              <input className="tap-input" name="start_time" required type="time" defaultValue={event.start_time} />
+            </label>
+            <label className="tap-label">
+              End Time
+              <input className="tap-input" name="end_time" required type="time" defaultValue={event.end_time} />
+            </label>
+            <button className="tap-button tap-button-secondary" type="submit">
+              Update Schedule
+            </button>
+          </form>
+          {query.scheduleMessage ? (
+            <div
+              className={`mt-3 rounded-lg border p-3 text-sm font-bold ${
+                query.scheduleResult === "success"
+                  ? "border-green-200 bg-green-50 text-green-700"
+                  : "border-red-200 bg-red-50 text-red-700"
+              }`}
+            >
+              {query.scheduleMessage}
+            </div>
+          ) : null}
           <form action={updateEventBannerAction} className="mt-5 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
             <input type="hidden" name="event_id" value={event.id} />
             <label className="tap-label">

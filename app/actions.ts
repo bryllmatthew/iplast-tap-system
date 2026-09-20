@@ -24,6 +24,7 @@ import {
   updateProduct,
   updateEventProductInventory,
   updateEventBanner,
+  updateEventSchedule,
   updateEventRegistrationForm
 } from "@/lib/repository";
 import { ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, requireAuth, userHasRole } from "@/lib/auth";
@@ -259,6 +260,30 @@ export async function updateEventBannerAction(formData: FormData) {
   }
   revalidatePath(`/admin/events/${eventId}`);
   revalidatePath("/admin/events");
+  redirect(`/admin/events/${eventId}?${params.toString()}`);
+}
+
+export async function updateEventScheduleAction(formData: FormData) {
+  await requireAuth("admin");
+
+  const eventId = String(formData.get("event_id") || "");
+  const result = await updateEventSchedule(formData);
+  const params = new URLSearchParams({
+    scheduleMessage: result.message,
+    scheduleResult: result.ok ? "success" : "error"
+  });
+
+  revalidatePath("/");
+  revalidatePath("/landing");
+  revalidatePath("/vismincreatorsclub");
+  revalidatePath("/events");
+  revalidatePath("/admin");
+  revalidatePath("/admin/events");
+  revalidatePath(`/admin/events/${eventId}`);
+  if (result.event) {
+    revalidatePath(`/events/${result.event.event_slug}`);
+    revalidatePath(`/events/${result.event.event_slug}/register`);
+  }
   redirect(`/admin/events/${eventId}?${params.toString()}`);
 }
 

@@ -866,6 +866,46 @@ export async function updateEventBanner(eventId: string, posterUrl: string) {
   return { ok: true, message: "Event banner updated.", event };
 }
 
+export async function updateEventSchedule(formData: FormData) {
+  const eventId = String(formData.get("event_id") || "");
+  const eventDate = String(formData.get("event_date") || "").trim();
+  const startTime = String(formData.get("start_time") || "").trim();
+  const endTime = String(formData.get("end_time") || "").trim();
+
+  if (!eventId) return { ok: false, message: "Event is required." };
+  if (!eventDate || !startTime || !endTime) return { ok: false, message: "Event date, start time, and end time are required." };
+  if (startTime >= endTime) return { ok: false, message: "End time must be later than start time." };
+
+  const registrationEnd = new Date(`${eventDate}T23:59:59`).toISOString();
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("events")
+      .update({
+        event_date: eventDate,
+        start_time: startTime,
+        end_time: endTime,
+        registration_end: registrationEnd,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", eventId)
+      .select(eventSelect)
+      .maybeSingle();
+
+    if (error) return { ok: false, message: error.message };
+    if (!data) return { ok: false, message: "Event not found." };
+    return { ok: true, message: "Event date and time updated.", event: eventFromRow(data) };
+  }
+
+  const event = state().events.find((item) => item.id === eventId);
+  if (!event) return { ok: false, message: "Event not found." };
+  event.event_date = eventDate;
+  event.start_time = startTime;
+  event.end_time = endTime;
+  event.registration_end = registrationEnd;
+  return { ok: true, message: "Event date and time updated.", event };
+}
+
 export async function deleteEvent(eventId: string) {
   if (!eventId) return { ok: false, message: "Event is required." };
 

@@ -133,7 +133,7 @@ export default async function AdminEventHubPage({
               <p className="text-sm leading-6 text-slate-600">
                 Updating this publishes a new form version for future registrations. Existing submitted responses keep their original snapshot.
               </p>
-              <RegistrationFieldChecklist selectedFieldIds={form?.fields.map((field) => field.id)} />
+              <RegistrationFieldChecklist selectedFields={form?.fields} />
               <div className="flex flex-wrap gap-2">
                 <button className="tap-button tap-button-primary w-full md:w-max" type="submit">
                   Save Registration Fields

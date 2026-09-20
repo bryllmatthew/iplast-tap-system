@@ -143,8 +143,14 @@ export function defaultRegistrationFields() {
 
 export function registrationFieldsFromFormData(formData: FormData) {
   const selectedIds = new Set(formData.getAll("registration_fields").map(String));
-  const selected = registrationFieldCatalog.filter((field) => field.required || selectedIds.has(field.id));
-  return (selected.length ? selected : registrationFieldCatalog.filter((field) => field.defaultSelected)).map(toFormField);
+  const requiredIds = new Set(formData.getAll("required_registration_fields").map(String));
+  const selected = registrationFieldCatalog.filter((field) => field.required || selectedIds.has(field.id) || requiredIds.has(field.id));
+  const fields = selected.length ? selected : registrationFieldCatalog.filter((field) => field.defaultSelected);
+
+  return fields.map((field) => ({
+    ...toFormField(field),
+    required: field.required || requiredIds.has(field.id)
+  }));
 }
 
 export function registrationFieldPlaceholder(fieldId: string) {

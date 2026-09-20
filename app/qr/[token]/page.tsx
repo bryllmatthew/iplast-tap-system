@@ -78,7 +78,7 @@ export default async function QrPage({
             <p className="font-black text-ink">{currency(data.creator.gmv_max_total)}</p>
           </div>
           <div className="rounded-lg bg-slate-50 p-3">
-            <p className="text-xs font-bold text-slate-500">Followers</p>
+            <p className="text-xs font-bold text-slate-500">TikTok Followers</p>
             <p className="font-black text-ink">{number(data.creator.follower_count)}</p>
           </div>
           <div className="rounded-lg bg-slate-50 p-3">

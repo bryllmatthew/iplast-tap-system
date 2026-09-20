@@ -20,6 +20,7 @@ export default async function CreatorDetailPage({
   const latestResponse = registrations.find((item) => item.response)?.response;
   const platformTags = creatorPlatformTags(latestResponse);
   const latestAnswers = latestResponse?.answers || {};
+  const shopeeFollowers = Number(latestAnswers.shopee_follower_count || 0);
   const tikTokGmv = Number(latestAnswers.tiktok_last_month_gmv || latestAnswers.gmv_max_total || 0);
   const shopeeGmv = Number(latestAnswers.shopee_last_month_gmv || 0);
 
@@ -59,7 +60,8 @@ export default async function CreatorDetailPage({
             <Info label="Email" value={creator.email} />
             <Info label="Mobile" value={creator.mobile} />
             <Info label="Location" value={creator.location} />
-            <Info label="Followers" value={number(creator.follower_count)} />
+            <Info label="TikTok Followers" value={number(creator.follower_count)} />
+            <Info label="Shopee Followers" value={number(shopeeFollowers)} />
             <Info label="TikTok Last Month GMV" value={currency(tikTokGmv)} />
             <Info label="Shopee Last Month GMV" value={currency(shopeeGmv)} />
             <Info label="Content Categories" value={creator.content_categories.join(", ")} />

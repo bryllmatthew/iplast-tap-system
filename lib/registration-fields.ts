@@ -61,7 +61,7 @@ export const registrationFieldCatalog: RegistrationFieldDefinition[] = [
     group: "TikTok",
     defaultSelected: true
   },
-  { id: "follower_count", label: "Follower count", field_type: "number", required: false, sort_order: 10, group: "TikTok", defaultSelected: true },
+  { id: "follower_count", label: "TikTok Followers", field_type: "number", required: false, sort_order: 10, group: "TikTok", defaultSelected: true },
   { id: "tiktok_last_month_gmv", label: "TikTok Last Month GMV", field_type: "number", required: false, sort_order: 11, group: "TikTok", defaultSelected: true },
   {
     id: "shopee_username",
@@ -93,14 +93,15 @@ export const registrationFieldCatalog: RegistrationFieldDefinition[] = [
     group: "Shopee",
     defaultSelected: true
   },
-  { id: "shopee_last_month_gmv", label: "Shopee Last Month GMV", field_type: "number", required: false, sort_order: 15, group: "Shopee", defaultSelected: true },
+  { id: "shopee_follower_count", label: "Shopee Followers", field_type: "number", required: false, sort_order: 15, group: "Shopee", defaultSelected: true },
+  { id: "shopee_last_month_gmv", label: "Shopee Last Month GMV", field_type: "number", required: false, sort_order: 16, group: "Shopee", defaultSelected: true },
   {
     id: "facebook_username",
     label: "Facebook username",
     field_type: "short_text",
     required: false,
     placeholder: "facebook.username",
-    sort_order: 16,
+    sort_order: 17,
     group: "Facebook",
     defaultSelected: true
   },
@@ -110,7 +111,7 @@ export const registrationFieldCatalog: RegistrationFieldDefinition[] = [
     field_type: "url",
     required: false,
     placeholder: "https://facebook.com/...",
-    sort_order: 17,
+    sort_order: 18,
     group: "Facebook",
     defaultSelected: true
   },
@@ -119,7 +120,7 @@ export const registrationFieldCatalog: RegistrationFieldDefinition[] = [
     label: "Facebook Follower Count",
     field_type: "number",
     required: false,
-    sort_order: 18,
+    sort_order: 19,
     group: "Facebook",
     defaultSelected: true
   }

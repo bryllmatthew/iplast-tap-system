@@ -52,7 +52,7 @@ export default async function RegistrationDetailPage({
             <Info label="Mobile" value={creator.mobile} />
             <Info label="Location" value={creator.location} />
             <Info label="GMV Max" value={currency(creator.gmv_max_total)} />
-            <Info label="Followers" value={number(creator.follower_count)} />
+            <Info label="TikTok Followers" value={number(creator.follower_count)} />
             <Info label="Category" value={creator.creator_category} />
             <Info label="Content Categories" value={creator.content_categories.join(", ")} />
             <Info label="Affiliate Experience" value={creator.affiliate_experience} />

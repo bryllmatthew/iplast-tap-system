@@ -85,7 +85,7 @@ export default async function SellerScanPage({
                 <p className="font-bold text-slate-600">@{verified.creator.tiktok_username}</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <Info label="GMV Max" value={currency(verified.creator.gmv_max_total)} />
-                  <Info label="Followers" value={number(verified.creator.follower_count)} />
+                  <Info label="TikTok Followers" value={number(verified.creator.follower_count)} />
                   <Info label="Category" value={verified.creator.creator_category} />
                 </div>
               </div>

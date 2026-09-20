@@ -62,7 +62,7 @@ export default async function CreatorsDatabasePage({
                 <th className="p-4">Creator</th>
                 <th className="p-4">TikTok</th>
                 <th className="p-4">Event</th>
-                <th className="p-4">Followers</th>
+                <th className="p-4">TikTok Followers</th>
                 <th className="p-4">Samples</th>
                 <th className="p-4">Checked In</th>
               </tr>

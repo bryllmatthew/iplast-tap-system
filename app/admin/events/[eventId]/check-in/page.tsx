@@ -54,7 +54,7 @@ export default async function CheckInPage({
                 <p className="mt-1 font-bold text-slate-500">@{creator.tiktok_username}</p>
                 <div className="mt-3 grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
                   <span>GMV: {currency(creator.gmv_max_total)}</span>
-                  <span>Followers: {number(creator.follower_count)}</span>
+                  <span>TikTok Followers: {number(creator.follower_count)}</span>
                   <span>{creator.mobile}</span>
                 </div>
                 {attendance?.checked_in_at ? (

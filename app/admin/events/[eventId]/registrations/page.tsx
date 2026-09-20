@@ -89,11 +89,11 @@ export default async function RegistrationsPage({
             <input className="tap-input" name="gmvMax" type="number" min={0} placeholder="500000" defaultValue={gmvMax} />
           </label>
           <label className="tap-label">
-            Followers Min
+            TikTok Followers Min
             <input className="tap-input" name="followersMin" type="number" min={0} placeholder="0" defaultValue={followersMin} />
           </label>
           <label className="tap-label">
-            Followers Max
+            TikTok Followers Max
             <input className="tap-input" name="followersMax" type="number" min={0} placeholder="100000" defaultValue={followersMax} />
           </label>
           <label className="tap-label">
@@ -133,7 +133,7 @@ export default async function RegistrationsPage({
               <th className="p-4">Creator</th>
               <th className="p-4">TikTok URL</th>
               <th className="p-4">GMV Max</th>
-              <th className="p-4">Followers</th>
+              <th className="p-4">TikTok Followers</th>
               <th className="p-4">Category</th>
               <th className="p-4">Registered</th>
               <th className="p-4">Status</th>

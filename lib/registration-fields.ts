@@ -52,34 +52,12 @@ export const registrationFieldCatalog: RegistrationFieldDefinition[] = [
     defaultSelected: true
   },
   {
-    id: "tiktok_username",
-    label: "TikTok Username  (@xxxxxx)",
-    field_type: "short_text",
-    required: false,
-    placeholder: "@xxxxxx",
-    sort_order: 9,
-    group: "TikTok",
-    defaultSelected: true
-  },
-  {
-    id: "tiktok_profile_url",
-    label: "TikTok Profile link",
-    field_type: "url",
-    required: false,
-    placeholder: "https://www.tiktok.com/@xxxxxx",
-    sort_order: 10,
-    group: "TikTok",
-    defaultSelected: true
-  },
-  { id: "follower_count", label: "TikTok Followers", field_type: "number", required: false, sort_order: 11, group: "TikTok", defaultSelected: true },
-  { id: "tiktok_last_month_gmv", label: "TikTok Last Month GMV", field_type: "number", required: false, sort_order: 12, group: "TikTok", defaultSelected: true },
-  {
     id: "shopee_username",
     label: "Shopee username",
     field_type: "short_text",
     required: false,
     placeholder: "shopeeusername",
-    sort_order: 13,
+    sort_order: 9,
     group: "Shopee",
     defaultSelected: true
   },
@@ -89,12 +67,34 @@ export const registrationFieldCatalog: RegistrationFieldDefinition[] = [
     field_type: "url",
     required: false,
     placeholder: "https://shopee.ph/...",
-    sort_order: 14,
+    sort_order: 10,
     group: "Shopee",
     defaultSelected: true
   },
-  { id: "shopee_follower_count", label: "Shopee Followers", field_type: "number", required: false, sort_order: 15, group: "Shopee", defaultSelected: true },
-  { id: "shopee_last_month_gmv", label: "Shopee Last Month GMV", field_type: "number", required: false, sort_order: 16, group: "Shopee", defaultSelected: true },
+  { id: "shopee_follower_count", label: "Shopee Followers", field_type: "number", required: false, sort_order: 11, group: "Shopee", defaultSelected: true },
+  { id: "shopee_last_month_gmv", label: "Shopee Last Month GMV", field_type: "number", required: false, sort_order: 12, group: "Shopee", defaultSelected: true },
+  {
+    id: "tiktok_username",
+    label: "TikTok Username  (@xxxxxx)",
+    field_type: "short_text",
+    required: false,
+    placeholder: "@xxxxxx",
+    sort_order: 13,
+    group: "TikTok",
+    defaultSelected: true
+  },
+  {
+    id: "tiktok_profile_url",
+    label: "TikTok Profile link",
+    field_type: "url",
+    required: false,
+    placeholder: "https://www.tiktok.com/@xxxxxx",
+    sort_order: 14,
+    group: "TikTok",
+    defaultSelected: true
+  },
+  { id: "follower_count", label: "TikTok Followers", field_type: "number", required: false, sort_order: 15, group: "TikTok", defaultSelected: true },
+  { id: "tiktok_last_month_gmv", label: "TikTok Last Month GMV", field_type: "number", required: false, sort_order: 16, group: "TikTok", defaultSelected: true },
   {
     id: "facebook_username",
     label: "Facebook username",
@@ -155,4 +155,14 @@ export function registrationFieldsFromFormData(formData: FormData) {
 
 export function registrationFieldPlaceholder(fieldId: string) {
   return registrationFieldCatalog.find((field) => field.id === fieldId)?.placeholder;
+}
+
+export function sortRegistrationFields(fields: FormField[]) {
+  const catalogOrder = new Map(registrationFieldCatalog.map((field) => [field.id, field.sort_order]));
+
+  return [...fields].sort((a, b) => {
+    const aOrder = catalogOrder.get(a.id) ?? a.sort_order;
+    const bOrder = catalogOrder.get(b.id) ?? b.sort_order;
+    return aOrder - bOrder;
+  });
 }

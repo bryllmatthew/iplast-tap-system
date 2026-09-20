@@ -20,7 +20,7 @@ import {
 } from "@/lib/demo-data";
 import { cleanEnv } from "@/lib/clean-env";
 import { appUrl, canonicalAppUrl } from "@/lib/env";
-import { defaultRegistrationFields, registrationFieldsFromFormData } from "@/lib/registration-fields";
+import { defaultRegistrationFields, registrationFieldsFromFormData, sortRegistrationFields } from "@/lib/registration-fields";
 import { normalizeSellerUsername, sellerUsernameToAuthEmail } from "@/lib/seller-login";
 import type {
   Attendance,
@@ -678,19 +678,19 @@ export async function getPublishedForm(eventId: string) {
       version_number: Number(versionRow?.version_number || 1),
       status: "published",
       published_at: String(versionRow?.published_at || new Date().toISOString()),
-      fields: fields.map((field) => ({
+      fields: sortRegistrationFields(fields.map((field) => ({
         id: String(field.field_key),
         label: String(field.label),
         field_type: String(field.field_type) as FormField["field_type"],
         required: Boolean(field.required),
         options: Array.isArray(field.options) ? field.options.map(String) : [],
         sort_order: Number(field.sort_order)
-      }))
+      })))
     } satisfies FormVersion;
   }
 
   const existing = state().forms.find((form) => form.event_id === eventId);
-  if (existing) return existing;
+  if (existing) return { ...existing, fields: sortRegistrationFields(existing.fields) };
 
   const form: FormVersion = {
     id: `formv_${eventId}_1`,

@@ -42,12 +42,22 @@ export const registrationFieldCatalog: RegistrationFieldDefinition[] = [
     defaultSelected: true
   },
   {
+    id: "shopee_affiliate_status",
+    label: "Shopee Affiliate Status",
+    field_type: "single_select",
+    required: false,
+    options: ["Active", "Application Pending", "Not yet registered"],
+    sort_order: 8,
+    group: "Shopee",
+    defaultSelected: true
+  },
+  {
     id: "tiktok_username",
     label: "TikTok Username  (@xxxxxx)",
     field_type: "short_text",
     required: false,
     placeholder: "@xxxxxx",
-    sort_order: 8,
+    sort_order: 9,
     group: "TikTok",
     defaultSelected: true
   },
@@ -57,19 +67,19 @@ export const registrationFieldCatalog: RegistrationFieldDefinition[] = [
     field_type: "url",
     required: false,
     placeholder: "https://www.tiktok.com/@xxxxxx",
-    sort_order: 9,
+    sort_order: 10,
     group: "TikTok",
     defaultSelected: true
   },
-  { id: "follower_count", label: "TikTok Followers", field_type: "number", required: false, sort_order: 10, group: "TikTok", defaultSelected: true },
-  { id: "tiktok_last_month_gmv", label: "TikTok Last Month GMV", field_type: "number", required: false, sort_order: 11, group: "TikTok", defaultSelected: true },
+  { id: "follower_count", label: "TikTok Followers", field_type: "number", required: false, sort_order: 11, group: "TikTok", defaultSelected: true },
+  { id: "tiktok_last_month_gmv", label: "TikTok Last Month GMV", field_type: "number", required: false, sort_order: 12, group: "TikTok", defaultSelected: true },
   {
     id: "shopee_username",
     label: "Shopee username",
     field_type: "short_text",
     required: false,
     placeholder: "shopeeusername",
-    sort_order: 12,
+    sort_order: 13,
     group: "Shopee",
     defaultSelected: true
   },
@@ -79,16 +89,6 @@ export const registrationFieldCatalog: RegistrationFieldDefinition[] = [
     field_type: "url",
     required: false,
     placeholder: "https://shopee.ph/...",
-    sort_order: 13,
-    group: "Shopee",
-    defaultSelected: true
-  },
-  {
-    id: "shopee_affiliate_status",
-    label: "Shopee Affiliate Status",
-    field_type: "single_select",
-    required: false,
-    options: ["Active", "Application Pending", "Not yet registered"],
     sort_order: 14,
     group: "Shopee",
     defaultSelected: true

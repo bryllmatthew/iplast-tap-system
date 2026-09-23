@@ -4,12 +4,12 @@ import { redirect } from "next/navigation";
 
 import { requireAuth } from "@/lib/auth";
 import { number, shortDate } from "@/lib/format";
-import { getCreatorPortalOverview } from "@/lib/repository";
+import { getCreatorPortalOverview, listCreatorCampaigns } from "@/lib/repository";
 import { registrationStatusClass } from "@/lib/status";
 
 export default async function CreatorDashboardPage() {
   const user = await requireAuth("creator");
-  const overview = await getCreatorPortalOverview(user.id);
+  const [overview, campaignRows] = await Promise.all([getCreatorPortalOverview(user.id), listCreatorCampaigns(user.id)]);
   if (!overview) redirect("/login?role=creator&next=/creator");
 
   const activeRegistrations = overview.registrations.filter(({ registration }) => ["pending", "approved", "waitlisted"].includes(registration.registration_status));
@@ -54,7 +54,16 @@ export default async function CreatorDashboardPage() {
 
         <section className="tap-card p-5">
           <h2 className="text-xl font-black text-ink">Available Campaigns</h2>
-          <EmptyState text="Affiliate campaigns will appear here once TAP publishes creator opportunities." />
+          <div className="mt-4 grid gap-3">
+            {campaignRows.slice(0, 3).map(({ campaign, brand, application }) => (
+              <Link key={campaign.id} className="rounded-lg bg-slate-50 p-4 hover:bg-slate-100" href={`/creator/campaigns/${campaign.id}`}>
+                <p className="text-xs font-black uppercase text-cyan-700">{brand?.brand_name || "Campaign"}</p>
+                <p className="mt-1 font-black text-ink">{campaign.campaign_name}</p>
+                <p className="mt-2 text-sm font-bold text-slate-500">{application?.status || campaign.status}</p>
+              </Link>
+            ))}
+            {!campaignRows.length ? <EmptyState text="Affiliate campaigns will appear here once TAP publishes creator opportunities." /> : null}
+          </div>
           <Link className="tap-button tap-button-primary mt-4 w-full" href="/creator/campaigns">Browse Campaigns</Link>
         </section>
       </div>

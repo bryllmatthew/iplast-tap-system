@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, CircleDollarSign, Home, LayoutDashboard, PackageCheck, QrCode, ReceiptText, Store, UserRound, Users } from "lucide-react";
+import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, CircleDollarSign, Home, LayoutDashboard, Megaphone, PackageCheck, QrCode, ReceiptText, Store, UserRound, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const adminLinks = [
   ["Dashboard", "/admin", LayoutDashboard],
   ["Events", "/admin/events", CalendarDays],
+  ["Campaigns", "/admin/campaigns", Megaphone],
   ["Creators", "/admin/creators", Users],
   ["Sellers", "/admin/sellers", Store],
   ["Reports", "/admin/reports", BarChart3]

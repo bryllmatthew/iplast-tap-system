@@ -11,6 +11,8 @@ export type EventStatus =
 export type RegistrationStatus = "pending" | "approved" | "rejected" | "waitlisted" | "cancelled";
 export type AttendanceStatus = "not_checked_in" | "checked_in" | "checked_out";
 export type ClaimStatus = "claimed" | "cancelled" | "reversed";
+export type CampaignStatus = "draft" | "recruiting" | "active" | "completed" | "archived" | "cancelled";
+export type CampaignApplicationStatus = "applied" | "under_review" | "approved" | "rejected" | "waitlisted" | "withdrawn";
 export type FieldType =
   | "short_text"
   | "long_text"
@@ -198,6 +200,38 @@ export type EventProduct = {
   available_quantity: number;
   max_claims_per_creator: number;
   status: "active" | "inactive";
+};
+
+export type AffiliateCampaign = {
+  id: string;
+  organization_id: string;
+  campaign_name: string;
+  campaign_slug: string;
+  brand_id: string;
+  open_plan_commission: number;
+  campaign_mechanics: string;
+  campaign_requirements: string;
+  campaign_assets_url?: string;
+  sample_video_links: string[];
+  campaign_product_link?: string;
+  status: CampaignStatus;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CampaignApplication = {
+  id: string;
+  campaign_id: string;
+  creator_id: string;
+  status: CampaignApplicationStatus;
+  application_message: string;
+  applied_at: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+  rejection_reason?: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type SampleClaim = {

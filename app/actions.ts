@@ -11,6 +11,7 @@ import {
   addEventSeller,
   addExistingSellerToEvent,
   addProduct,
+  applyToCampaign,
   checkInCreator,
   createEvent,
   deleteEvent,
@@ -19,6 +20,7 @@ import {
   getSellerDetail,
   issueSampleClaim,
   removeSellerEvent,
+  saveCampaign,
   setRegistrationStatus,
   submitRegistration,
   updateSeller,
@@ -332,6 +334,48 @@ export async function deleteEventAction(formData: FormData) {
   revalidatePath("/seller");
   revalidatePath("/seller/events");
   redirect(`/admin/events?${params.toString()}`);
+}
+
+export async function saveCampaignAction(formData: FormData) {
+  const user = await requireAuth("admin");
+  const campaignId = String(formData.get("campaign_id") || "");
+  const result = await saveCampaign(formData, user.id);
+  const params = new URLSearchParams({
+    campaignMessage: result.message,
+    campaignResult: result.ok ? "success" : "error"
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/campaigns");
+  revalidatePath("/creator");
+  revalidatePath("/creator/campaigns");
+  if (result.campaign) {
+    revalidatePath(`/admin/campaigns/${result.campaign.id}`);
+    revalidatePath(`/creator/campaigns/${result.campaign.id}`);
+  }
+
+  if (!result.ok) {
+    redirect(campaignId ? `/admin/campaigns/${campaignId}?${params.toString()}` : `/admin/campaigns/new?${params.toString()}`);
+  }
+  redirect(`/admin/campaigns/${result.campaign?.id}?${params.toString()}`);
+}
+
+export async function applyToCampaignAction(formData: FormData) {
+  const user = await requireAuth("creator");
+  const campaignId = String(formData.get("campaign_id") || "");
+  const message = String(formData.get("application_message") || "").trim();
+  const result = await applyToCampaign(user.id, campaignId, message);
+  const params = new URLSearchParams({
+    message: result.message,
+    result: result.ok ? "success" : "error"
+  });
+
+  revalidatePath("/creator");
+  revalidatePath("/creator/campaigns");
+  revalidatePath(`/creator/campaigns/${campaignId}`);
+  revalidatePath("/admin/campaigns");
+  revalidatePath(`/admin/campaigns/${campaignId}`);
+  redirect(`/creator/campaigns/${campaignId}?${params.toString()}`);
 }
 
 export async function deleteSellerAction(formData: FormData) {

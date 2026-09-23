@@ -24,7 +24,9 @@ import { defaultRegistrationFields, registrationFieldsFromFormData, sortRegistra
 import { normalizeSellerUsername, sellerUsernameToAuthEmail } from "@/lib/seller-login";
 import type {
   Attendance,
+  AffiliateCampaign,
   Brand,
+  CampaignApplication,
   Creator,
   CreatorAccount,
   CreatorQr,
@@ -59,6 +61,8 @@ type DemoState = {
   claims: SampleClaim[];
   sellerInvites: SellerInvite[];
   creatorAccounts?: CreatorAccount[];
+  campaigns?: AffiliateCampaign[];
+  campaignApplications?: CampaignApplication[];
   forms: FormVersion[];
 };
 
@@ -69,6 +73,8 @@ const sellerSelect =
   "id,company_name,contact_name,username,email,phone,shop_code,shop_link,open_plan_commission,tap_commission,logo_url,status";
 const productSelect =
   "id,brand_id,product_name,sku,pid,product_link,image_url,description,sample_inventory,max_claims_per_creator,status";
+const campaignSelect =
+  "id,organization_id,campaign_name,campaign_slug,brand_id,open_plan_commission,campaign_mechanics,campaign_requirements,campaign_assets_url,sample_video_links,campaign_product_link,status,created_by,created_at,updated_at";
 
 function createServiceClient() {
   const url = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -243,6 +249,42 @@ function eventSellerFromRow(row: Record<string, unknown>): EventSeller {
     booth_name: String(row.booth_name || ""),
     booth_number: String(row.booth_number || ""),
     status: String(row.status || "active") as EventSeller["status"]
+  };
+}
+
+function campaignFromRow(row: Record<string, unknown>): AffiliateCampaign {
+  return {
+    id: String(row.id),
+    organization_id: String(row.organization_id || defaultOrganizationId),
+    campaign_name: String(row.campaign_name || ""),
+    campaign_slug: String(row.campaign_slug || ""),
+    brand_id: String(row.brand_id || ""),
+    open_plan_commission: Number(row.open_plan_commission || 0),
+    campaign_mechanics: String(row.campaign_mechanics || ""),
+    campaign_requirements: String(row.campaign_requirements || ""),
+    campaign_assets_url: row.campaign_assets_url ? String(row.campaign_assets_url) : undefined,
+    sample_video_links: Array.isArray(row.sample_video_links) ? row.sample_video_links.map(String) : [],
+    campaign_product_link: row.campaign_product_link ? String(row.campaign_product_link) : undefined,
+    status: String(row.status || "draft") as AffiliateCampaign["status"],
+    created_by: row.created_by ? String(row.created_by) : undefined,
+    created_at: String(row.created_at || ""),
+    updated_at: String(row.updated_at || "")
+  };
+}
+
+function campaignApplicationFromRow(row: Record<string, unknown>): CampaignApplication {
+  return {
+    id: String(row.id),
+    campaign_id: String(row.campaign_id),
+    creator_id: String(row.creator_id),
+    status: String(row.status || "applied") as CampaignApplication["status"],
+    application_message: String(row.application_message || ""),
+    applied_at: String(row.applied_at || ""),
+    reviewed_at: row.reviewed_at ? String(row.reviewed_at) : undefined,
+    reviewed_by: row.reviewed_by ? String(row.reviewed_by) : undefined,
+    rejection_reason: row.rejection_reason ? String(row.rejection_reason) : undefined,
+    created_at: String(row.created_at || ""),
+    updated_at: String(row.updated_at || "")
   };
 }
 
@@ -1268,6 +1310,190 @@ export async function getSellerDetail(sellerId: string) {
   return rows.find((row) => row.seller.id === sellerId) || null;
 }
 
+export async function listCampaignBrandOptions() {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: brands, error: brandsError } = await supabase.from("brands").select("id,seller_id,brand_name,logo_url,description,status").order("brand_name");
+    if (brandsError) {
+      console.error("Failed to load campaign brand options", brandsError);
+      return [];
+    }
+    const brandRows = (brands || []).map(brandFromRow);
+    const sellerIds = unique(brandRows.map((brand) => brand.seller_id));
+    const { data: sellers } = sellerIds.length ? await supabase.from("sellers").select(sellerSelect).in("id", sellerIds) : { data: [] };
+    const sellerRows = mapById((sellers || []).map(sellerFromRow));
+    return brandRows.map((brand) => ({ brand, seller: sellerRows.get(brand.seller_id) || demoSeller }));
+  }
+
+  const s = state();
+  return s.brands.map((brand) => ({ brand, seller: s.sellers.find((seller) => seller.id === brand.seller_id) || demoSeller }));
+}
+
+function campaignSlugFromName(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 64);
+}
+
+function campaignLinksFromFormData(formData: FormData) {
+  return String(formData.get("sample_video_links") || "")
+    .split(/\r?\n|,/)
+    .map((link) => link.trim())
+    .filter(Boolean);
+}
+
+export async function listAdminCampaigns() {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data, error } = await supabase.from("affiliate_campaigns").select(campaignSelect).order("created_at", { ascending: false });
+    if (error) {
+      console.error("Failed to load campaigns", error);
+      return [];
+    }
+    const campaigns = (data || []).map(campaignFromRow);
+    if (!campaigns.length) return [];
+    const brandIds = unique(campaigns.map((campaign) => campaign.brand_id));
+    const campaignIds = unique(campaigns.map((campaign) => campaign.id));
+    const [brandsResult, applicationsResult] = await Promise.all([
+      supabase.from("brands").select("id,seller_id,brand_name,logo_url,description,status").in("id", brandIds),
+      supabase.from("campaign_applications").select("id,campaign_id,creator_id,status,application_message,applied_at,reviewed_at,reviewed_by,rejection_reason,created_at,updated_at").in("campaign_id", campaignIds)
+    ]);
+    const brands = (brandsResult.data || []).map(brandFromRow);
+    const sellerIds = unique(brands.map((brand) => brand.seller_id));
+    const { data: sellerRows } = sellerIds.length ? await supabase.from("sellers").select(sellerSelect).in("id", sellerIds) : { data: [] };
+    const sellers = mapById((sellerRows || []).map(sellerFromRow));
+    const brandMap = mapById(brands);
+    const applications = (applicationsResult.data || []).map(campaignApplicationFromRow);
+
+    return campaigns.map((campaign) => {
+      const brand = brandMap.get(campaign.brand_id);
+      return {
+        campaign,
+        brand,
+        seller: brand ? sellers.get(brand.seller_id) : undefined,
+        applications: applications.filter((application) => application.campaign_id === campaign.id)
+      };
+    });
+  }
+
+  const s = state();
+  return (s.campaigns || []).map((campaign) => {
+    const brand = s.brands.find((item) => item.id === campaign.brand_id);
+    return {
+      campaign,
+      brand,
+      seller: brand ? s.sellers.find((seller) => seller.id === brand.seller_id) : undefined,
+      applications: (s.campaignApplications || []).filter((application) => application.campaign_id === campaign.id)
+    };
+  });
+}
+
+export async function getCampaignDetail(campaignId: string) {
+  const rows = await listAdminCampaigns();
+  return rows.find((row) => row.campaign.id === campaignId) || null;
+}
+
+export async function saveCampaign(formData: FormData, userId?: string) {
+  const campaignId = String(formData.get("campaign_id") || "");
+  const campaignName = String(formData.get("campaign_name") || "").trim();
+  const brandId = String(formData.get("brand_id") || "");
+  const status = String(formData.get("status") || "draft") as AffiliateCampaign["status"];
+  const openPlanCommission = Number(formData.get("open_plan_commission") || 0);
+  const mechanics = String(formData.get("campaign_mechanics") || "").trim();
+  const requirements = String(formData.get("campaign_requirements") || "").trim();
+  const assetsUrl = String(formData.get("campaign_assets_url") || "").trim();
+  const productLink = String(formData.get("campaign_product_link") || "").trim();
+  const sampleVideoLinks = campaignLinksFromFormData(formData);
+
+  if (!campaignName || !brandId) return { ok: false, message: "Campaign name and brand are required." };
+  if (!Number.isFinite(openPlanCommission) || openPlanCommission < 0) return { ok: false, message: "Commission must be a valid percentage." };
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    const slugBase = campaignSlugFromName(campaignName);
+    const existingCampaigns = campaignId ? [] : await listAdminCampaigns();
+    const existingSlugs = new Set(existingCampaigns.map(({ campaign }) => campaign.campaign_slug));
+    let slug = slugBase || `campaign-${Date.now()}`;
+    let suffix = 2;
+    while (existingSlugs.has(slug)) {
+      slug = `${slugBase}-${suffix}`;
+      suffix += 1;
+    }
+
+    const payload = {
+      campaign_name: campaignName,
+      brand_id: brandId,
+      open_plan_commission: openPlanCommission,
+      campaign_mechanics: mechanics,
+      campaign_requirements: requirements,
+      campaign_assets_url: assetsUrl || null,
+      sample_video_links: sampleVideoLinks,
+      campaign_product_link: productLink || null,
+      status,
+      updated_at: new Date().toISOString()
+    };
+
+    const query = campaignId
+      ? supabase.from("affiliate_campaigns").update(payload).eq("id", campaignId).select(campaignSelect).maybeSingle()
+      : supabase
+        .from("affiliate_campaigns")
+        .insert({
+          ...payload,
+          organization_id: defaultOrganizationId,
+          campaign_slug: slug,
+          created_by: userId || null
+        })
+        .select(campaignSelect)
+        .single();
+
+    const { data, error } = await query;
+    if (error) return { ok: false, message: error.message };
+    if (!data) return { ok: false, message: "Campaign not found." };
+    return { ok: true, message: campaignId ? "Campaign updated." : "Campaign created.", campaign: campaignFromRow(data) };
+  }
+
+  const s = state();
+  const existing = campaignId ? s.campaigns?.find((campaign) => campaign.id === campaignId) : undefined;
+  const now = new Date().toISOString();
+  if (existing) {
+    Object.assign(existing, {
+      campaign_name: campaignName,
+      brand_id: brandId,
+      open_plan_commission: openPlanCommission,
+      campaign_mechanics: mechanics,
+      campaign_requirements: requirements,
+      campaign_assets_url: assetsUrl || undefined,
+      sample_video_links: sampleVideoLinks,
+      campaign_product_link: productLink || undefined,
+      status,
+      updated_at: now
+    });
+    return { ok: true, message: "Campaign updated.", campaign: existing };
+  }
+
+  const campaign: AffiliateCampaign = {
+    id: uid("cmp"),
+    organization_id: defaultOrganizationId,
+    campaign_name: campaignName,
+    campaign_slug: campaignSlugFromName(campaignName) || uid("campaign"),
+    brand_id: brandId,
+    open_plan_commission: openPlanCommission,
+    campaign_mechanics: mechanics,
+    campaign_requirements: requirements,
+    campaign_assets_url: assetsUrl || undefined,
+    sample_video_links: sampleVideoLinks,
+    campaign_product_link: productLink || undefined,
+    status,
+    created_by: userId,
+    created_at: now,
+    updated_at: now
+  };
+  s.campaigns = [campaign, ...(s.campaigns || [])];
+  return { ok: true, message: "Campaign created.", campaign };
+}
+
 export async function addExistingSellerToEvent(formData: FormData) {
   const eventId = String(formData.get("event_id") || "");
   const sellerId = String(formData.get("seller_id") || "");
@@ -2291,6 +2517,120 @@ export async function getCreatorPortalOverview(userId: string) {
   }
 
   return null;
+}
+
+export async function getCreatorAccountForUser(userId: string) {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("creator_accounts")
+      .select("id,creator_id,user_id,email,status,invited_by,invited_at,activated_at,created_at,updated_at")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (error) {
+      console.error("Failed to load creator account", error);
+      return null;
+    }
+    return data ? creatorAccountFromRow(data) : null;
+  }
+  return null;
+}
+
+export async function listCreatorCampaigns(userId: string) {
+  const account = await getCreatorAccountForUser(userId);
+  if (!account) return [];
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("affiliate_campaigns")
+      .select(campaignSelect)
+      .in("status", ["recruiting", "active"])
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Failed to load creator campaigns", error);
+      return [];
+    }
+
+    const campaigns = (data || []).map(campaignFromRow);
+    if (!campaigns.length) return [];
+    const brandIds = unique(campaigns.map((campaign) => campaign.brand_id));
+    const campaignIds = unique(campaigns.map((campaign) => campaign.id));
+    const [brandsResult, applicationsResult] = await Promise.all([
+      supabase.from("brands").select("id,seller_id,brand_name,logo_url,description,status").in("id", brandIds),
+      supabase
+        .from("campaign_applications")
+        .select("id,campaign_id,creator_id,status,application_message,applied_at,reviewed_at,reviewed_by,rejection_reason,created_at,updated_at")
+        .in("campaign_id", campaignIds)
+        .eq("creator_id", account.creator_id)
+    ]);
+    const brands = (brandsResult.data || []).map(brandFromRow);
+    const sellerIds = unique(brands.map((brand) => brand.seller_id));
+    const { data: sellerRows } = sellerIds.length ? await supabase.from("sellers").select(sellerSelect).in("id", sellerIds) : { data: [] };
+    const sellers = mapById((sellerRows || []).map(sellerFromRow));
+    const brandMap = mapById(brands);
+    const applications = (applicationsResult.data || []).map(campaignApplicationFromRow);
+
+    return campaigns.map((campaign) => {
+      const brand = brandMap.get(campaign.brand_id);
+      return {
+        campaign,
+        brand,
+        seller: brand ? sellers.get(brand.seller_id) : undefined,
+        application: applications.find((application) => application.campaign_id === campaign.id)
+      };
+    });
+  }
+
+  return [];
+}
+
+export async function getCreatorCampaignDetail(userId: string, campaignId: string) {
+  const rows = await listCreatorCampaigns(userId);
+  return rows.find((row) => row.campaign.id === campaignId) || null;
+}
+
+export async function applyToCampaign(userId: string, campaignId: string, message: string) {
+  const account = await getCreatorAccountForUser(userId);
+  if (!account) return { ok: false, message: "Creator account not found." };
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: campaignRow, error: campaignError } = await supabase
+      .from("affiliate_campaigns")
+      .select(campaignSelect)
+      .eq("id", campaignId)
+      .in("status", ["recruiting", "active"])
+      .maybeSingle();
+    if (campaignError) return { ok: false, message: campaignError.message };
+    if (!campaignRow) return { ok: false, message: "Campaign is not accepting applications." };
+
+    const { data: existing, error: existingError } = await supabase
+      .from("campaign_applications")
+      .select("id,status")
+      .eq("campaign_id", campaignId)
+      .eq("creator_id", account.creator_id)
+      .maybeSingle();
+    if (existingError) return { ok: false, message: existingError.message };
+    if (existing && String(existing.status) !== "withdrawn") return { ok: false, message: "You already applied for this campaign." };
+
+    const { error } = await supabase.from("campaign_applications").upsert(
+      {
+        campaign_id: campaignId,
+        creator_id: account.creator_id,
+        status: "applied",
+        application_message: message,
+        applied_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "campaign_id,creator_id" }
+    );
+    if (error) return { ok: false, message: error.message };
+    return { ok: true, message: "Campaign application submitted." };
+  }
+
+  return { ok: false, message: "Campaign applications require Supabase." };
 }
 
 export async function submitRegistration(slug: string, formData: FormData) {

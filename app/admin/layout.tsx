@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, CalendarDays, LayoutDashboard, Store, Users } from "lucide-react";
+import { BarChart3, CalendarDays, LayoutDashboard, Megaphone, Store, Users } from "lucide-react";
 
 import { logoutAction } from "@/app/actions";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -9,6 +9,7 @@ import { appUrl } from "@/lib/env";
 const mobileLinks = [
   ["Home", "/admin", LayoutDashboard],
   ["Events", "/admin/events", CalendarDays],
+  ["Campaigns", "/admin/campaigns", Megaphone],
   ["Creators", "/admin/creators", Users],
   ["Sellers", "/admin/sellers", Store],
   ["Reports", "/admin/reports", BarChart3]
@@ -39,7 +40,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <AppSidebar variant="admin" />
         <section className="min-w-0 flex-1">{children}</section>
       </div>
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white/95 px-2 py-2 backdrop-blur lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-slate-200 bg-white/95 px-2 py-2 backdrop-blur lg:hidden">
         {mobileLinks.map(([label, href, Icon]) => (
           <Link key={href} className="grid justify-items-center gap-1 rounded-lg px-1 py-2 text-[0.68rem] font-black text-slate-500" href={href}>
             <Icon className="size-5 text-cyan-700" />

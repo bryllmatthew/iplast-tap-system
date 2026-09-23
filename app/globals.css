@@ -6,6 +6,14 @@
   color-scheme: dark;
   background: #050507;
   color: #f5f5f7;
+  --tap-surface: rgba(20, 22, 28, 0.82);
+  --tap-surface-strong: rgba(30, 32, 40, 0.9);
+  --tap-border: rgba(255, 255, 255, 0.12);
+  --tap-border-strong: rgba(125, 215, 255, 0.34);
+  --tap-blue: #0a84ff;
+  --tap-cyan: #64d2ff;
+  --tap-green: #30d158;
+  --tap-fuchsia: #bf5af2;
 }
 
 * {
@@ -20,9 +28,9 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(10, 132, 255, 0.18), transparent 28rem),
-    radial-gradient(circle at bottom right, rgba(48, 209, 88, 0.08), transparent 24rem),
-    linear-gradient(180deg, #050507 0%, #101014 100%);
+    linear-gradient(135deg, rgba(10, 132, 255, 0.16), transparent 34%),
+    linear-gradient(235deg, rgba(191, 90, 242, 0.12), transparent 38%),
+    linear-gradient(180deg, #050507 0%, #0d1017 48%, #111318 100%);
   font-family:
     ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
   font-size: 14px;
@@ -54,11 +62,37 @@ textarea {
 }
 
 .tap-card {
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  border: 1px solid var(--tap-border);
   border-radius: 8px;
-  background: rgba(28, 28, 30, 0.78);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(22px);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.072), rgba(255, 255, 255, 0.025)),
+    var(--tap-surface);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.34),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 0 0 1px rgba(10, 132, 255, 0.025);
+  backdrop-filter: blur(24px) saturate(1.18);
+}
+
+.tap-card:is(a):hover,
+a.tap-card:hover {
+  background:
+    linear-gradient(145deg, rgba(100, 210, 255, 0.14), rgba(191, 90, 242, 0.06)),
+    var(--tap-surface-strong);
+  border-color: var(--tap-border-strong);
+  box-shadow:
+    0 26px 78px rgba(0, 0, 0, 0.4),
+    0 0 26px rgba(10, 132, 255, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+}
+
+a.tap-card:hover .text-ink,
+a.tap-card:hover h1,
+a.tap-card:hover h2,
+a.tap-card:hover h3,
+a.tap-card:hover p {
+  color: #ffffff;
 }
 
 .tap-button {
@@ -76,7 +110,8 @@ textarea {
   transition:
     transform 160ms ease,
     box-shadow 160ms ease,
-    background 160ms ease;
+    background 160ms ease,
+    border-color 160ms ease;
 }
 
 .tap-button:hover {
@@ -84,14 +119,27 @@ textarea {
 }
 
 .tap-button-primary {
-  background: #0a84ff;
+  border-color: rgba(100, 210, 255, 0.45);
+  background:
+    linear-gradient(135deg, rgba(100, 210, 255, 0.24), transparent 42%),
+    linear-gradient(135deg, #0a84ff, #0066d6);
   color: white;
-  box-shadow: 0 10px 24px rgba(10, 132, 255, 0.22);
+  box-shadow:
+    0 12px 28px rgba(10, 132, 255, 0.28),
+    0 0 18px rgba(100, 210, 255, 0.16);
+}
+
+.tap-button-primary:hover {
+  border-color: rgba(100, 210, 255, 0.78);
+  box-shadow:
+    0 16px 36px rgba(10, 132, 255, 0.34),
+    0 0 26px rgba(100, 210, 255, 0.2);
 }
 
 .tap-button-secondary {
   border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.04));
   color: #f5f5f7;
 }
 
@@ -105,7 +153,7 @@ textarea {
   background: rgba(48, 209, 88, 0.15);
   color: #30d158;
   border-color: rgba(48, 209, 88, 0.28);
-  box-shadow: none;
+  box-shadow: 0 0 18px rgba(48, 209, 88, 0.08);
 }
 
 .tap-button:disabled {
@@ -118,16 +166,19 @@ textarea {
   min-height: 36px;
   width: 100%;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.048));
   padding: 0.55rem 0.7rem;
   color: #f5f5f7;
   outline: none;
 }
 
 .tap-input:focus {
-  border-color: #0a84ff;
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
+  border-color: var(--tap-cyan);
+  box-shadow:
+    0 0 0 3px rgba(10, 132, 255, 0.18),
+    0 0 18px rgba(100, 210, 255, 0.12);
 }
 
 .tap-input option {
@@ -151,6 +202,7 @@ textarea {
   font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.035) inset;
 }
 
 .text-ink {
@@ -190,7 +242,7 @@ textarea {
 .bg-white,
 .bg-slate-50,
 .bg-slate-100 {
-  background-color: rgba(255, 255, 255, 0.055);
+  background-color: rgba(255, 255, 255, 0.064);
 }
 
 .bg-cyan-50 {
@@ -219,7 +271,7 @@ textarea {
 }
 
 .hover\:bg-slate-100:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(100, 210, 255, 0.12);
 }
 
 .hover\:border-cyan-400:hover {
@@ -227,8 +279,28 @@ textarea {
 }
 
 .tap-button-secondary:hover {
+  border-color: rgba(100, 210, 255, 0.3);
   background: rgba(255, 255, 255, 0.14);
   color: #ffffff;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+thead {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+tbody tr {
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+tbody tr:hover {
+  background: rgba(100, 210, 255, 0.055);
 }
 
 .seller-db-row {
@@ -238,7 +310,8 @@ textarea {
 }
 
 .seller-db-row:hover {
-  background: rgba(10, 132, 255, 0.12);
+  background:
+    linear-gradient(90deg, rgba(10, 132, 255, 0.16), rgba(191, 90, 242, 0.06));
 }
 
 .seller-db-row:hover .seller-db-title {
@@ -258,7 +331,8 @@ textarea {
 
 .seller-db-card:hover {
   border-color: rgba(100, 210, 255, 0.65);
-  background: rgba(10, 132, 255, 0.1);
+  background:
+    linear-gradient(135deg, rgba(10, 132, 255, 0.14), rgba(191, 90, 242, 0.06));
 }
 
 .campaign-card {
@@ -269,7 +343,13 @@ textarea {
 }
 
 .campaign-card:hover {
-  background: linear-gradient(135deg, rgba(10, 132, 255, 0.16), rgba(191, 90, 242, 0.1));
+  border-color: rgba(100, 210, 255, 0.65);
+  background:
+    linear-gradient(135deg, rgba(10, 132, 255, 0.18), rgba(191, 90, 242, 0.11)),
+    var(--tap-surface-strong);
+  box-shadow:
+    0 26px 78px rgba(0, 0, 0, 0.4),
+    0 0 26px rgba(191, 90, 242, 0.12);
   transform: translateY(-1px);
 }
 
@@ -313,8 +393,10 @@ thead {
 }
 
 header {
-  background: rgba(18, 18, 20, 0.82) !important;
+  background:
+    linear-gradient(180deg, rgba(24, 27, 35, 0.92), rgba(16, 18, 24, 0.82)) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
 }
 
 @media (max-width: 720px) {

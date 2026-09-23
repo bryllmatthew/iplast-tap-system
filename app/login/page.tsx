@@ -9,11 +9,36 @@ export default async function LoginPage({
   const role = query.role === "seller" ? "seller" : query.role === "creator" ? "creator" : "admin";
   const next = query.next || (role === "seller" ? "/seller" : role === "creator" ? "/creator" : "/admin");
   const title = role === "seller" ? "Seller Login" : role === "creator" ? "Creator Login" : "Admin Login";
+  const roleAccent =
+    role === "admin"
+      ? "from-sky-500/30 to-cyan-400/10 text-cyan-200"
+      : role === "seller"
+        ? "from-orange-500/30 to-amber-300/10 text-orange-100"
+        : "from-fuchsia-500/30 to-cyan-400/10 text-fuchsia-100";
+  const roleTabs = [
+    { id: "admin", label: "Admin", href: "/login?role=admin&next=/admin" },
+    { id: "seller", label: "Seller", href: "/login?role=seller&next=/seller" },
+    { id: "creator", label: "Creator", href: "/login?role=creator&next=/creator" }
+  ];
 
   return (
     <main className="tap-shell grid min-h-[calc(100vh-64px)] place-items-center py-8">
-      <section className="tap-card w-full max-w-md p-6">
-        <p className="text-sm font-black uppercase text-cyan-700">{title}</p>
+      <section className={`tap-card w-full max-w-md overflow-hidden border-t-4 bg-gradient-to-br ${roleAccent}`}>
+        <div className="grid grid-cols-3 border-b border-slate-200 bg-black/10 p-2">
+          {roleTabs.map((tab) => (
+            <a
+              key={tab.id}
+              className={`rounded-lg px-3 py-2 text-center text-sm font-black transition ${
+                role === tab.id ? "bg-white/15 text-white shadow-lg" : "text-slate-500 hover:bg-white/10 hover:text-white"
+              }`}
+              href={tab.href}
+            >
+              {tab.label}
+            </a>
+          ))}
+        </div>
+        <div className="p-6">
+        <p className="inline-flex rounded-full bg-white/10 px-3 py-1 text-sm font-black uppercase">{title}</p>
         <h1 className="mt-2 text-3xl font-black text-ink">Sign in to TAP System</h1>
         <p className="mt-2 text-slate-600">
           {role === "admin" ? "Use the default TAP admin credentials." : "Use the login details provided by TAP Admin."}
@@ -36,6 +61,7 @@ export default async function LoginPage({
             Sign In
           </button>
         </form>
+        </div>
       </section>
     </main>
   );

@@ -26,6 +26,7 @@ import type {
   Attendance,
   Brand,
   Creator,
+  CreatorAccount,
   CreatorQr,
   Event,
   EventProduct,
@@ -57,6 +58,7 @@ type DemoState = {
   eventProducts: EventProduct[];
   claims: SampleClaim[];
   sellerInvites: SellerInvite[];
+  creatorAccounts?: CreatorAccount[];
   forms: FormVersion[];
 };
 
@@ -163,6 +165,21 @@ function creatorFromRow(row: Record<string, unknown>): Creator {
     affiliate_experience: String(row.affiliate_experience || ""),
     profile_image: row.profile_image ? String(row.profile_image) : undefined,
     notes: row.notes ? String(row.notes) : undefined
+  };
+}
+
+function creatorAccountFromRow(row: Record<string, unknown>): CreatorAccount {
+  return {
+    id: String(row.id),
+    creator_id: String(row.creator_id),
+    user_id: String(row.user_id),
+    email: String(row.email || ""),
+    status: String(row.status || "pending") as CreatorAccount["status"],
+    invited_by: row.invited_by ? String(row.invited_by) : undefined,
+    invited_at: String(row.invited_at || ""),
+    activated_at: row.activated_at ? String(row.activated_at) : undefined,
+    created_at: String(row.created_at || ""),
+    updated_at: String(row.updated_at || "")
   };
 }
 
@@ -2134,7 +2151,7 @@ export async function getCreatorDetail(creatorId: string) {
       .order("registered_at", { ascending: false });
     const registrationsRaw = (registrationRows || []).map(registrationFromRow);
 
-    const [eventsResult, attendanceResult, responsesResult, qrsResult, claimsResult] = await Promise.all([
+    const [eventsResult, attendanceResult, responsesResult, qrsResult, claimsResult, accountResult] = await Promise.all([
       registrationsRaw.length
         ? supabase.from("events").select(eventSelect).in("id", unique(registrationsRaw.map((registration) => registration.event_id)))
         : Promise.resolve({ data: [], error: null }),
@@ -2159,7 +2176,12 @@ export async function getCreatorDetail(creatorId: string) {
       supabase
         .from("sample_claims")
         .select("id,event_id,creator_id,seller_id,brand_id,product_id,quantity,claimed_at,claimed_by,booth_id,qr_scan_id,status")
+        .eq("creator_id", creator.id),
+      supabase
+        .from("creator_accounts")
+        .select("id,creator_id,user_id,email,status,invited_by,invited_at,activated_at,created_at,updated_at")
         .eq("creator_id", creator.id)
+        .maybeSingle()
     ]);
 
     const events = mapById((eventsResult.data || []).map(eventFromRow));
@@ -2187,6 +2209,7 @@ export async function getCreatorDetail(creatorId: string) {
 
     return {
       creator,
+      portalAccount: accountResult.data ? creatorAccountFromRow(accountResult.data) : undefined,
       registrations: registrationsRaw.map((registration) => ({
         registration,
         event: events.get(registration.event_id) || demoEvent,
@@ -2230,7 +2253,44 @@ export async function getCreatorDetail(creatorId: string) {
       seller: demoSeller
     }));
 
-  return { creator, registrations, sampleClaims };
+  const portalAccount = s.creatorAccounts?.find((account) => account.creator_id === creator.id);
+
+  return { creator, portalAccount, registrations, sampleClaims };
+}
+
+export async function getCreatorPortalOverview(userId: string) {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: accountRow, error } = await supabase
+      .from("creator_accounts")
+      .select("id,creator_id,user_id,email,status,invited_by,invited_at,activated_at,created_at,updated_at")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (error) {
+      console.error("Failed to load creator portal account", error);
+      return null;
+    }
+    if (!accountRow) return null;
+
+    const account = creatorAccountFromRow(accountRow);
+    const detail = await getCreatorDetail(account.creator_id);
+    if (!detail) return null;
+    const events = await listEvents();
+    const upcomingEvents = events
+      .filter((event) => event.event_date >= new Date().toISOString().slice(0, 10))
+      .slice(0, 3);
+
+    return {
+      account,
+      creator: detail.creator,
+      registrations: detail.registrations,
+      sampleClaims: detail.sampleClaims,
+      upcomingEvents
+    };
+  }
+
+  return null;
 }
 
 export async function submitRegistration(slug: string, formData: FormData) {

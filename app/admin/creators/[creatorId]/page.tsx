@@ -1,20 +1,24 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { grantCreatorPortalAccessAction } from "@/app/actions";
 import { currency, number, shortDate, time } from "@/lib/format";
 import { creatorPlatformTags } from "@/lib/platform-tags";
 import { getCreatorDetail } from "@/lib/repository";
 import { registrationStatusClass } from "@/lib/status";
 
 export default async function CreatorDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ creatorId: string }>;
+  searchParams: Promise<{ portalMessage?: string; portalResult?: string }>;
 }) {
   const { creatorId } = await params;
+  const query = await searchParams;
   const detail = await getCreatorDetail(creatorId);
   if (!detail) notFound();
-  const { creator, registrations, sampleClaims } = detail;
+  const { creator, portalAccount, registrations, sampleClaims } = detail;
   const attended = registrations.filter((item) => item.attendance?.status === "checked_in");
   const brandsVisited = new Set(sampleClaims.map((item) => item.brand.id)).size;
   const latestResponse = registrations.find((item) => item.response)?.response;
@@ -68,6 +72,46 @@ export default async function CreatorDetailPage({
             <Info label="Affiliate Experience" value={creator.affiliate_experience} />
             <Info label="Notes" value={creator.notes || "-"} />
           </div>
+        </section>
+
+        <section className="tap-card min-w-0 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black text-ink">Creator Portal Access</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Grant access only to selected creators. This links a Supabase Auth login to this existing creator record.
+              </p>
+            </div>
+            <span className={`status-pill ${portalAccount?.status === "active" ? "bg-green-50 text-green-700" : portalAccount?.status === "suspended" ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-700"}`}>
+              {portalAccount?.status || "no_account"}
+            </span>
+          </div>
+          {portalAccount ? (
+            <p className="mt-3 text-sm font-bold text-slate-500">Login email: {portalAccount.email}</p>
+          ) : null}
+          {query.portalMessage ? (
+            <div className={`mt-4 rounded-lg border p-3 text-sm font-bold ${query.portalResult === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>
+              {query.portalMessage}
+            </div>
+          ) : null}
+          <form action={grantCreatorPortalAccessAction} className="mt-5 grid gap-3 sm:grid-cols-2">
+            <input type="hidden" name="creator_id" value={creator.id} />
+            <label className="tap-label sm:col-span-2">
+              Creator Login Email
+              <input className="tap-input" name="email" required type="email" defaultValue={portalAccount?.email || creator.email} placeholder="creator@email.com" />
+            </label>
+            <label className="tap-label">
+              Password
+              <input className="tap-input" name="password" required type="password" minLength={8} placeholder="Set password" />
+            </label>
+            <label className="tap-label">
+              Confirm Password
+              <input className="tap-input" name="confirm_password" required type="password" minLength={8} placeholder="Confirm password" />
+            </label>
+            <button className="tap-button tap-button-primary sm:col-span-2" type="submit">
+              Grant Portal Access
+            </button>
+          </form>
         </section>
 
         <section className="tap-card min-w-0 p-5">

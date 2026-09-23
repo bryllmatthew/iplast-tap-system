@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, Home, LayoutDashboard, PackageCheck, QrCode, ReceiptText, Store, Users } from "lucide-react";
+import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, CircleDollarSign, Home, LayoutDashboard, PackageCheck, QrCode, ReceiptText, Store, UserRound, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const adminLinks = [
@@ -20,10 +20,18 @@ const sellerLinks = [
   ["Products", "/seller/products", PackageCheck]
 ] as const;
 
-export function AppSidebar({ variant }: { variant: "admin" | "seller" }) {
+const creatorLinks = [
+  ["Dashboard", "/creator", Home],
+  ["Campaigns", "/creator/campaigns", Store],
+  ["Events", "/creator/events", CalendarDays],
+  ["Earnings", "/creator/earnings", CircleDollarSign],
+  ["Profile", "/creator/profile", UserRound]
+] as const;
+
+export function AppSidebar({ variant }: { variant: "admin" | "seller" | "creator" }) {
   const [collapsed, setCollapsed] = useState(false);
-  const links = variant === "admin" ? adminLinks : sellerLinks;
-  const label = variant === "admin" ? "TAP Admin" : "Seller Menu";
+  const links = variant === "admin" ? adminLinks : variant === "seller" ? sellerLinks : creatorLinks;
+  const label = variant === "admin" ? "TAP Admin" : variant === "seller" ? "Seller Menu" : "Creator Menu";
   const storageKey = `tap-${variant}-sidebar-collapsed`;
 
   useEffect(() => {

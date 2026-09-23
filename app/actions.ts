@@ -15,6 +15,7 @@ import {
   createEvent,
   deleteEvent,
   deleteSeller,
+  getCreatorDetail,
   getSellerDetail,
   issueSampleClaim,
   removeSellerEvent,
@@ -27,7 +28,7 @@ import {
   updateEventSchedule,
   updateEventRegistrationForm
 } from "@/lib/repository";
-import { ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, requireAuth, userHasRole } from "@/lib/auth";
+import { ensureCreatorAuthUser, ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, requireAuth, userHasRole } from "@/lib/auth";
 import { cleanEnv } from "@/lib/clean-env";
 import { appUrl } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -77,8 +78,8 @@ export async function loginAction(formData: FormData) {
   const role = String(formData.get("role") || "admin");
   const username = String(formData.get("username") || "").trim();
   const password = String(formData.get("password") || "");
-  const next = String(formData.get("next") || (role === "seller" ? "/seller" : "/admin"));
-  const expectedRole = role === "seller" ? "seller" : "admin";
+  const next = String(formData.get("next") || (role === "seller" ? "/seller" : role === "creator" ? "/creator" : "/admin"));
+  const expectedRole = role === "seller" ? "seller" : role === "creator" ? "creator" : "admin";
   const email = loginIdentifierToEmail(expectedRole, username);
   let redirectTo = "";
 
@@ -91,7 +92,12 @@ export async function loginAction(formData: FormData) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (!error && data.user && (await userHasRole(data.user.id, expectedRole))) {
-      redirectTo = expectedRole === "seller" ? (next.startsWith("/seller") ? next : "/seller") : next.startsWith("/admin") ? next : "/admin";
+      redirectTo =
+        expectedRole === "seller"
+          ? next.startsWith("/seller") ? next : "/seller"
+          : expectedRole === "creator"
+            ? next.startsWith("/creator") ? next : "/creator"
+            : next.startsWith("/admin") ? next : "/admin";
     } else {
       await supabase.auth.signOut();
     }
@@ -353,6 +359,45 @@ export async function deleteSellerAction(formData: FormData) {
   }
 
   redirect(`${redirectTo}?${params.toString()}`);
+}
+
+export async function grantCreatorPortalAccessAction(formData: FormData) {
+  const adminUser = await requireAuth("admin");
+
+  const creatorId = String(formData.get("creator_id") || "");
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const password = String(formData.get("password") || "").trim();
+  const confirmPassword = String(formData.get("confirm_password") || "").trim();
+  const detail = creatorId ? await getCreatorDetail(creatorId) : null;
+  let ok = false;
+  let message = "Creator not found.";
+
+  if (detail) {
+    if (!email || !email.includes("@")) {
+      message = "Enter a valid creator email.";
+    } else if (password.length < 8) {
+      message = "Password must be at least 8 characters.";
+    } else if (password !== confirmPassword) {
+      message = "Passwords do not match.";
+    } else {
+      try {
+        await ensureCreatorAuthUser(detail.creator, email, password, adminUser.id);
+        message = "Creator portal access granted.";
+        ok = true;
+      } catch (error) {
+        console.error("Creator portal access grant failed", error);
+        message = "Could not grant portal access. Make sure the creator account table migration has been applied.";
+      }
+    }
+  }
+
+  revalidatePath("/admin/creators");
+  revalidatePath(`/admin/creators/${creatorId}`);
+  const params = new URLSearchParams({
+    portalMessage: message,
+    portalResult: ok ? "success" : "error"
+  });
+  redirect(`/admin/creators/${creatorId}?${params.toString()}`);
 }
 
 export async function updateSellerAction(formData: FormData) {

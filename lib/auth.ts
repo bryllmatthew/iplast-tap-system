@@ -6,7 +6,7 @@ import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { cleanEnv } from "@/lib/clean-env";
 import { sellerAuthEmailFromIdentifier, sellerUsernameToAuthEmail } from "@/lib/seller-login";
-import type { Role, Seller } from "@/lib/types";
+import type { Creator, Role, Seller } from "@/lib/types";
 
 const adminUsername = "TAPAdmin";
 const adminEmail = process.env.TAP_ADMIN_EMAIL || "tapadmin@iplast.ai";
@@ -123,13 +123,42 @@ export async function ensureSellerAuthUser(seller: Seller, password: string) {
   return user;
 }
 
+export async function ensureCreatorAuthUser(creator: Creator, email: string, password: string, invitedBy?: string) {
+  const user = await ensureAuthUser(email, password, creator.full_name);
+  const admin = createServiceClient();
+  const now = new Date().toISOString();
+
+  await admin.from("profiles").upsert({
+    id: user.id,
+    full_name: creator.full_name,
+    email
+  });
+
+  const { error } = await admin.from("creator_accounts").upsert(
+    {
+      creator_id: creator.id,
+      user_id: user.id,
+      email,
+      status: "active",
+      invited_by: invitedBy || null,
+      invited_at: now,
+      activated_at: now,
+      updated_at: now
+    },
+    { onConflict: "creator_id" }
+  );
+  if (error) throw error;
+
+  return user;
+}
+
 export function loginIdentifierToEmail(role: string, identifier: string) {
   if (role !== "seller" && identifier === adminUsername) return adminEmail;
   if (role === "seller") return sellerAuthEmailFromIdentifier(identifier);
   return identifier;
 }
 
-export async function userHasRole(userId: string, role: "admin" | "seller") {
+export async function userHasRole(userId: string, role: "admin" | "seller" | "creator") {
   const supabase = createServiceClient();
 
   if (role === "admin") {
@@ -142,19 +171,34 @@ export async function userHasRole(userId: string, role: "admin" | "seller") {
     return Boolean(data?.length);
   }
 
-  const { data } = await supabase.from("seller_users").select("id").eq("user_id", userId).limit(1);
+  if (role === "seller") {
+    const { data } = await supabase.from("seller_users").select("id").eq("user_id", userId).limit(1);
+    return Boolean(data?.length);
+  }
+
+  const { data } = await supabase
+    .from("creator_accounts")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .limit(1);
   return Boolean(data?.length);
 }
 
-export async function requireAuth(role: Role | "admin" | "seller") {
+export async function requireAuth(role: Role | "admin" | "seller" | "creator") {
   const supabase = await createClient();
-  const expected = role === "seller_admin" || role === "seller_staff" || role === "seller" ? "seller" : "admin";
+  const expected =
+    role === "seller_admin" || role === "seller_staff" || role === "seller"
+      ? "seller"
+      : role === "creator"
+        ? "creator"
+        : "admin";
   const {
     data: { user }
   } = await supabase.auth.getUser();
 
   if (!user || !(await userHasRole(user.id, expected))) {
-    redirect(`/login?next=${expected === "seller" ? "/seller" : "/admin"}&role=${expected}`);
+    redirect(`/login?next=${expected === "seller" ? "/seller" : expected === "creator" ? "/creator" : "/admin"}&role=${expected}`);
   }
 
   return user;

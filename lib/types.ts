@@ -1,4 +1,4 @@
-export type Role = "super_admin" | "event_admin" | "event_staff" | "seller_admin" | "seller_staff";
+export type Role = "super_admin" | "event_admin" | "event_staff" | "seller_admin" | "seller_staff" | "creator";
 
 export type EventStatus =
   | "draft"
@@ -74,6 +74,19 @@ export type Creator = {
   affiliate_experience: string;
   profile_image?: string;
   notes?: string;
+};
+
+export type CreatorAccount = {
+  id: string;
+  creator_id: string;
+  user_id: string;
+  email: string;
+  status: "pending" | "active" | "suspended";
+  invited_by?: string;
+  invited_at: string;
+  activated_at?: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type FormResponse = {

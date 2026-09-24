@@ -55,6 +55,7 @@ function CampaignCard({
   row: Awaited<ReturnType<typeof listCreatorCampaigns>>[number];
 }) {
   const { campaign, brand, seller, application } = row;
+  const isApproved = application?.status === "approved";
 
   return (
     <Link className="campaign-card tap-card block p-5 hover:border-cyan-400" href={`/creator/campaigns/${campaign.id}`}>
@@ -68,9 +69,9 @@ function CampaignCard({
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Info label="Open Plan Commission" value={`${number(campaign.open_plan_commission)}%`} />
-        <Info label="Assets" value={campaign.campaign_assets_url ? "Available" : "Not added"} />
+        <Info label="Campaign Access" value={isApproved ? "Approved" : application ? "Awaiting approval" : "Open to apply"} />
       </div>
-      <p className="campaign-card-meta mt-4 line-clamp-3 text-sm leading-6 text-slate-600">{campaign.campaign_requirements || campaign.campaign_mechanics}</p>
+      <p className="campaign-card-meta mt-4 line-clamp-3 text-sm leading-6 text-slate-600">{campaign.campaign_mechanics || "Campaign overview will be shared here."}</p>
     </Link>
   );
 }

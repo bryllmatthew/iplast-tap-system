@@ -19,6 +19,7 @@ export default async function CreatorCampaignDetailPage({
   const detail = await getCreatorCampaignDetail(user.id, campaignId);
   if (!detail) notFound();
   const { campaign, brand, seller, application } = detail;
+  const isApproved = application?.status === "approved";
 
   return (
     <section className="space-y-5">
@@ -46,19 +47,30 @@ export default async function CreatorCampaignDetailPage({
           <div className="grid gap-4">
             <Info label="Open Plan Commission" value={`${number(campaign.open_plan_commission)}%`} />
             <TextBlock title="Campaign Mechanics and Guidelines" text={campaign.campaign_mechanics} />
-            <TextBlock title="Campaign Requirements" text={campaign.campaign_requirements} />
-            {campaign.campaign_assets_url ? <ExternalLink label="Campaign Assets" href={campaign.campaign_assets_url} /> : null}
-            {campaign.campaign_product_link ? <ExternalLink label="Campaign Product Link" href={campaign.campaign_product_link} /> : null}
-            {campaign.sample_video_links.length ? (
-              <div>
-                <h2 className="text-sm font-black uppercase text-slate-400">Sample Videos</h2>
-                <div className="mt-2 grid gap-2">
-                  {campaign.sample_video_links.map((link) => (
-                    <ExternalLink key={link} label={link} href={link} />
-                  ))}
-                </div>
+            {isApproved ? (
+              <>
+                <TextBlock title="Campaign Requirements" text={campaign.campaign_requirements} />
+                {campaign.campaign_assets_url ? <ExternalLink label="Campaign Assets" href={campaign.campaign_assets_url} /> : null}
+                {campaign.campaign_product_link ? <ExternalLink label="Campaign Product Link" href={campaign.campaign_product_link} /> : null}
+                {campaign.sample_video_links.length ? (
+                  <div>
+                    <h2 className="text-sm font-black uppercase text-slate-400">Sample Videos</h2>
+                    <div className="mt-2 grid gap-2">
+                      {campaign.sample_video_links.map((link) => (
+                        <ExternalLink key={link} label={link} href={link} />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="rounded-lg border border-cyan-200 bg-cyan-50 p-4">
+                <h2 className="text-sm font-black uppercase text-cyan-700">Approval Required</h2>
+                <p className="mt-2 text-sm font-bold leading-6 text-slate-600">
+                  Campaign assets, product links, sample videos, and detailed requirements unlock after TAP approves your application.
+                </p>
               </div>
-            ) : null}
+            )}
           </div>
         </section>
 

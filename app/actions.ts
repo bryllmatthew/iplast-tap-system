@@ -23,6 +23,7 @@ import {
   saveCampaign,
   setRegistrationStatus,
   submitRegistration,
+  updateCampaignApplicationStatus,
   updateSeller,
   updateProduct,
   updateEventProductInventory,
@@ -376,6 +377,26 @@ export async function applyToCampaignAction(formData: FormData) {
   revalidatePath("/admin/campaigns");
   revalidatePath(`/admin/campaigns/${campaignId}`);
   redirect(`/creator/campaigns/${campaignId}?${params.toString()}`);
+}
+
+export async function updateCampaignApplicationStatusAction(formData: FormData) {
+  const user = await requireAuth("admin");
+  const applicationId = String(formData.get("application_id") || "");
+  const status = String(formData.get("status") || "") as Parameters<typeof updateCampaignApplicationStatus>[1];
+  const fallbackCampaignId = String(formData.get("campaign_id") || "");
+  const result = await updateCampaignApplicationStatus(applicationId, status, user.id);
+  const campaignId = result.campaignId || fallbackCampaignId;
+  const params = new URLSearchParams({
+    appMessage: result.message,
+    appResult: result.ok ? "success" : "error"
+  });
+
+  revalidatePath("/admin/campaigns");
+  revalidatePath(`/admin/campaigns/${campaignId}`);
+  revalidatePath("/creator");
+  revalidatePath("/creator/campaigns");
+  if (campaignId) revalidatePath(`/creator/campaigns/${campaignId}`);
+  redirect(`/admin/campaigns/${campaignId}?${params.toString()}`);
 }
 
 export async function deleteSellerAction(formData: FormData) {

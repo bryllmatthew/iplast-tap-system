@@ -15,6 +15,7 @@ export default async function CreatorDashboardPage() {
   const activeRegistrations = overview.registrations.filter(({ registration }) => ["pending", "approved", "waitlisted"].includes(registration.registration_status));
   const checkedInEvents = overview.registrations.filter(({ attendance }) => attendance?.status === "checked_in");
   const samplesClaimed = overview.sampleClaims.reduce((total, row) => total + row.claim.quantity, 0);
+  const approvedCampaigns = campaignRows.filter(({ application }) => application?.status === "approved");
 
   return (
     <section className="space-y-5">
@@ -25,10 +26,10 @@ export default async function CreatorDashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={<Store className="size-5" />} label="Active Campaigns" value="0" />
-        <Metric icon={<ClipboardList className="size-5" />} label="Event Registrations" value={number(activeRegistrations.length)} />
-        <Metric icon={<CalendarDays className="size-5" />} label="Events Attended" value={number(checkedInEvents.length)} />
-        <Metric icon={<PackageCheck className="size-5" />} label="Samples Claimed" value={number(samplesClaimed)} />
+        <Metric href="/creator/campaigns" icon={<Store className="size-5" />} label="Approved Campaigns" value={number(approvedCampaigns.length)} />
+        <Metric href="/creator/events" icon={<ClipboardList className="size-5" />} label="Event Registrations" value={number(activeRegistrations.length)} />
+        <Metric href="/creator/events" icon={<CalendarDays className="size-5" />} label="Events Attended" value={number(checkedInEvents.length)} />
+        <Metric href="/creator/events" icon={<PackageCheck className="size-5" />} label="Samples Claimed" value={number(samplesClaimed)} />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
@@ -39,14 +40,14 @@ export default async function CreatorDashboardPage() {
           </div>
           <div className="mt-4 grid gap-3">
             {overview.registrations.slice(0, 4).map(({ registration, event, attendance }) => (
-              <article key={registration.id} className="rounded-lg bg-slate-50 p-4">
+              <Link key={registration.id} className="campaign-card block rounded-lg border border-slate-200 bg-slate-50 p-4 hover:border-cyan-400" href="/creator/events">
                 <p className="font-black text-ink">{event.event_name}</p>
                 <p className="mt-1 text-sm text-slate-500">{shortDate(event.event_date)} - {event.venue}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <span className={`status-pill ${registrationStatusClass(registration.registration_status)}`}>{registration.registration_status}</span>
                   <span className="status-pill bg-slate-100 text-slate-700">{attendance?.status || "not_checked_in"}</span>
                 </div>
-              </article>
+              </Link>
             ))}
             {!overview.registrations.length ? <EmptyState text="No event registrations are linked to your profile yet." /> : null}
           </div>
@@ -56,10 +57,10 @@ export default async function CreatorDashboardPage() {
           <h2 className="text-xl font-black text-ink">Available Campaigns</h2>
           <div className="mt-4 grid gap-3">
             {campaignRows.slice(0, 3).map(({ campaign, brand, application }) => (
-              <Link key={campaign.id} className="rounded-lg bg-slate-50 p-4 hover:bg-slate-100" href={`/creator/campaigns/${campaign.id}`}>
-                <p className="text-xs font-black uppercase text-cyan-700">{brand?.brand_name || "Campaign"}</p>
-                <p className="mt-1 font-black text-ink">{campaign.campaign_name}</p>
-                <p className="mt-2 text-sm font-bold text-slate-500">{application?.status || campaign.status}</p>
+              <Link key={campaign.id} className="campaign-card block rounded-lg border border-slate-200 bg-slate-50 p-4 hover:border-cyan-400" href={`/creator/campaigns/${campaign.id}`}>
+                <p className="campaign-card-accent text-xs font-black uppercase text-cyan-700">{brand?.brand_name || "Campaign"}</p>
+                <p className="campaign-card-title mt-1 font-black text-ink">{campaign.campaign_name}</p>
+                <p className="campaign-card-meta mt-2 text-sm font-bold text-slate-500">{application?.status || campaign.status}</p>
               </Link>
             ))}
             {!campaignRows.length ? <EmptyState text="Affiliate campaigns will appear here once TAP publishes creator opportunities." /> : null}
@@ -71,13 +72,13 @@ export default async function CreatorDashboardPage() {
   );
 }
 
-function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Metric({ href, icon, label, value }: { href: string; icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="tap-card p-4">
+    <Link className="tap-card block p-4 hover:border-cyan-400" href={href}>
       <div className="mb-3 text-cyan-700">{icon}</div>
       <p className="text-xs font-black uppercase text-slate-400">{label}</p>
       <p className="mt-1 text-2xl font-black text-ink">{value}</p>
-    </div>
+    </Link>
   );
 }
 

@@ -1366,14 +1366,27 @@ export async function listAdminCampaigns() {
     const sellers = mapById((sellerRows || []).map(sellerFromRow));
     const brandMap = mapById(brands);
     const applications = (applicationsResult.data || []).map(campaignApplicationFromRow);
+    const creatorIds = unique(applications.map((application) => application.creator_id));
+    const { data: creatorRows } = creatorIds.length
+      ? await supabase
+        .from("creators")
+        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+        .in("id", creatorIds)
+      : { data: [] };
+    const creators = mapById((creatorRows || []).map(creatorFromRow));
 
     return campaigns.map((campaign) => {
       const brand = brandMap.get(campaign.brand_id);
+      const campaignApplications = applications.filter((application) => application.campaign_id === campaign.id);
       return {
         campaign,
         brand,
         seller: brand ? sellers.get(brand.seller_id) : undefined,
-        applications: applications.filter((application) => application.campaign_id === campaign.id)
+        applications: campaignApplications,
+        applicationRows: campaignApplications.map((application) => ({
+          application,
+          creator: creators.get(application.creator_id)
+        }))
       };
     });
   }
@@ -1381,11 +1394,16 @@ export async function listAdminCampaigns() {
   const s = state();
   return (s.campaigns || []).map((campaign) => {
     const brand = s.brands.find((item) => item.id === campaign.brand_id);
+    const campaignApplications = (s.campaignApplications || []).filter((application) => application.campaign_id === campaign.id);
     return {
       campaign,
       brand,
       seller: brand ? s.sellers.find((seller) => seller.id === brand.seller_id) : undefined,
-      applications: (s.campaignApplications || []).filter((application) => application.campaign_id === campaign.id)
+      applications: campaignApplications,
+      applicationRows: campaignApplications.map((application) => ({
+        application,
+        creator: s.creators.find((creator) => creator.id === application.creator_id)
+      }))
     };
   });
 }
@@ -2631,6 +2649,38 @@ export async function applyToCampaign(userId: string, campaignId: string, messag
   }
 
   return { ok: false, message: "Campaign applications require Supabase." };
+}
+
+export async function updateCampaignApplicationStatus(applicationId: string, status: CampaignApplication["status"], reviewerId?: string) {
+  const allowed: CampaignApplication["status"][] = ["applied", "under_review", "approved", "rejected", "waitlisted", "withdrawn"];
+  if (!allowed.includes(status)) return { ok: false, message: "Invalid campaign application status." };
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("campaign_applications")
+      .update({
+        status,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: reviewerId || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", applicationId)
+      .select("id,campaign_id")
+      .maybeSingle();
+    if (error) return { ok: false, message: error.message };
+    if (!data) return { ok: false, message: "Campaign application not found." };
+    return { ok: true, message: `Application marked ${status.replaceAll("_", " ")}.`, campaignId: String(data.campaign_id) };
+  }
+
+  const s = state();
+  const application = s.campaignApplications?.find((item) => item.id === applicationId);
+  if (!application) return { ok: false, message: "Campaign application not found." };
+  application.status = status;
+  application.reviewed_at = new Date().toISOString();
+  application.reviewed_by = reviewerId;
+  application.updated_at = new Date().toISOString();
+  return { ok: true, message: `Application marked ${status.replaceAll("_", " ")}.`, campaignId: application.campaign_id };
 }
 
 export async function submitRegistration(slug: string, formData: FormData) {

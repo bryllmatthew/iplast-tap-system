@@ -353,6 +353,11 @@ tbody tr:hover {
   transform: translateY(-1px);
 }
 
+.campaign-card:hover .bg-slate-50,
+.campaign-card:hover .bg-slate-100 {
+  background-color: rgba(5, 8, 14, 0.42);
+}
+
 .campaign-card:hover .campaign-card-title,
 .campaign-card:hover .campaign-card-meta,
 .campaign-card:hover .campaign-card-accent {

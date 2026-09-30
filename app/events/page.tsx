@@ -5,16 +5,12 @@ import type { Event } from "@/lib/types";
 import { eventTimeRange, shortDate } from "@/lib/format";
 import { listEvents } from "@/lib/repository";
 import { eventStatusClass } from "@/lib/status";
+import { eventRegistrationStatusLabel, isEventRegistrationOpen, todayInEventTimeZone } from "@/lib/event-registration";
 
 export const dynamic = "force-dynamic";
 
 export default async function PublicEventsPage() {
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Manila",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date());
+  const today = todayInEventTimeZone();
   const publicEvents = (await listEvents()).filter((event) =>
     ["published", "registration_closed", "ongoing", "completed"].includes(event.status)
   );
@@ -74,12 +70,14 @@ function EventSection({
 }
 
 function EventCard({ event, isPast }: { event: Event; isPast: boolean }) {
+  const registrationOpen = isEventRegistrationOpen(event);
+
   return (
     <article className="tap-card overflow-hidden">
       <img className="h-52 w-full object-cover" src={event.poster_url} alt="" />
       <div className="p-5">
-        <span className={`status-pill ${isPast ? "bg-slate-100 text-slate-700" : eventStatusClass(event.status)}`}>
-          {isPast ? "past" : event.status}
+        <span className={`status-pill ${isPast ? "bg-slate-100 text-slate-700" : registrationOpen ? eventStatusClass(event.status) : "bg-amber-50 text-amber-800"}`}>
+          {isPast ? "past" : eventRegistrationStatusLabel(event)}
         </span>
         <h3 className="mt-3 text-xl font-black text-ink">{event.event_name}</h3>
         <p className="mt-2 text-sm leading-6 text-slate-600">{event.description}</p>
@@ -98,11 +96,13 @@ function EventCard({ event, isPast }: { event: Event; isPast: boolean }) {
           </span>
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
-          {!isPast ? (
+          {registrationOpen ? (
             <Link className="tap-button tap-button-primary" href={`/events/${event.event_slug}/register`}>
               <QrCode className="size-4" />
               Register
             </Link>
+          ) : !isPast ? (
+            <span className="tap-button tap-button-secondary opacity-80">Registration Closed</span>
           ) : null}
           <Link className="tap-button tap-button-secondary" href={`/events/${event.event_slug}`}>
             Details

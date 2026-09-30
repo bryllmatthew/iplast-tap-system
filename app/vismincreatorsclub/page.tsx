@@ -3,10 +3,14 @@ import { CalendarDays, Clock, MapPin, Sparkles } from "lucide-react";
 
 import { listEvents } from "@/lib/repository";
 import { eventTimeRange, shortDate } from "@/lib/format";
+import { eventRegistrationStatusLabel, isEventRegistrationOpen } from "@/lib/event-registration";
+
+export const dynamic = "force-dynamic";
 
 export default async function VisMinCreatorsClubPage() {
   const events = await listEvents();
-  const featured = events[0];
+  const featured = events.find((event) => isEventRegistrationOpen(event));
+  const visibleEvents = events.slice(0, 3);
 
   return (
     <main>
@@ -39,36 +43,47 @@ export default async function VisMinCreatorsClubPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {events.slice(0, 3).map((event) => (
-              <article key={event.id} className="tap-card overflow-hidden">
-                <img className="h-44 w-full object-cover" src={event.poster_url} alt="" />
-                <div className="p-4">
-                  <h2 className="text-xl font-black text-ink">{event.event_name}</h2>
-                  <div className="mt-3 grid gap-2 text-sm text-slate-600">
-                    <span className="inline-flex items-center gap-2">
-                      <CalendarDays className="size-4 text-cyan-700" />
-                      {shortDate(event.event_date)}
+            {visibleEvents.map((event) => {
+              const registrationOpen = isEventRegistrationOpen(event);
+
+              return (
+                <article key={event.id} className="tap-card overflow-hidden">
+                  <img className="h-44 w-full object-cover" src={event.poster_url} alt="" />
+                  <div className="p-4">
+                    <span className={`status-pill ${registrationOpen ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"}`}>
+                      {eventRegistrationStatusLabel(event)}
                     </span>
-                    <span className="inline-flex items-center gap-2">
-                      <Clock className="size-4 text-cyan-700" />
-                      {eventTimeRange(event.start_time, event.end_time)}
-                    </span>
-                    <span className="inline-flex items-center gap-2">
-                      <MapPin className="size-4 text-cyan-700" />
-                      {event.venue}
-                    </span>
+                    <h2 className="mt-3 text-xl font-black text-ink">{event.event_name}</h2>
+                    <div className="mt-3 grid gap-2 text-sm text-slate-600">
+                      <span className="inline-flex items-center gap-2">
+                        <CalendarDays className="size-4 text-cyan-700" />
+                        {shortDate(event.event_date)}
+                      </span>
+                      <span className="inline-flex items-center gap-2">
+                        <Clock className="size-4 text-cyan-700" />
+                        {eventTimeRange(event.start_time, event.end_time)}
+                      </span>
+                      <span className="inline-flex items-center gap-2">
+                        <MapPin className="size-4 text-cyan-700" />
+                        {event.venue}
+                      </span>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {registrationOpen ? (
+                        <Link className="tap-button tap-button-primary" href={`/events/${event.event_slug}/register`}>
+                          Register
+                        </Link>
+                      ) : (
+                        <span className="tap-button tap-button-secondary opacity-80">Registration Closed</span>
+                      )}
+                      <Link className="tap-button tap-button-secondary" href={`/events/${event.event_slug}`}>
+                        Details
+                      </Link>
+                    </div>
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Link className="tap-button tap-button-primary" href={`/events/${event.event_slug}/register`}>
-                      Register
-                    </Link>
-                    <Link className="tap-button tap-button-secondary" href={`/events/${event.event_slug}`}>
-                      Details
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>

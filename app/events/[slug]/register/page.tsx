@@ -2,10 +2,13 @@ import { CalendarDays, CheckCircle2, Clock, MapPin } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { submitRegistrationAction } from "@/app/actions";
+import { isEventRegistrationOpen } from "@/lib/event-registration";
 import { registrationFieldPlaceholder } from "@/lib/registration-fields";
 import { getEventBySlug, getPublishedForm } from "@/lib/repository";
 import { eventTimeRange, shortDate } from "@/lib/format";
 import type { FieldType, FormField } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
 
 function displayField(field: FormField) {
   return {
@@ -34,8 +37,9 @@ export default async function RegisterPage({
   const query = await searchParams;
   const event = await getEventBySlug(slug);
   if (!event) notFound();
-  const form = await getPublishedForm(event.id);
-  if (!form) notFound();
+  const registrationOpen = isEventRegistrationOpen(event);
+  const form = registrationOpen ? await getPublishedForm(event.id) : null;
+  if (registrationOpen && !form) notFound();
   const submitted = query.submitted === "1";
 
   return (
@@ -43,7 +47,9 @@ export default async function RegisterPage({
       <aside className="tap-card h-max overflow-hidden">
         <img className="h-64 w-full object-cover" src={event.poster_url} alt="" />
         <div className="space-y-3 p-5">
-          <span className="status-pill bg-green-50 text-green-700">{event.status}</span>
+          <span className={`status-pill ${registrationOpen ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"}`}>
+            {registrationOpen ? event.status : "registration_closed"}
+          </span>
           <h1 className="text-2xl font-black text-ink">{event.event_name}</h1>
           <div className="grid gap-2 text-sm font-bold text-slate-500">
             <span className="inline-flex items-start gap-2">
@@ -70,7 +76,17 @@ export default async function RegisterPage({
       </aside>
 
       <section className="tap-card p-5 sm:p-7">
-        {submitted ? (
+        {!registrationOpen ? (
+          <div className="grid min-h-[460px] place-items-center text-center">
+            <div className="max-w-md space-y-4">
+              <Clock className="mx-auto size-14 text-amber-400" />
+              <h2 className="text-3xl font-black text-ink">Registration Closed</h2>
+              <p className="leading-7 text-slate-600">
+                Registration for this event has closed because the event date has already passed.
+              </p>
+            </div>
+          </div>
+        ) : submitted ? (
           <div className="grid min-h-[460px] place-items-center text-center">
             <div className="max-w-md space-y-4">
               <CheckCircle2 className="mx-auto size-14 text-green-600" />
@@ -84,10 +100,10 @@ export default async function RegisterPage({
           <form action={submitRegistrationAction.bind(null, event.event_slug)} className="space-y-5">
             <div>
               <h2 className="text-3xl font-black text-ink">Creator Registration</h2>
-              <p className="mt-2 text-slate-600">Fields are captured against form version {form.version_number}.</p>
+              <p className="mt-2 text-slate-600">Fields are captured against form version {form!.version_number}.</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              {form.fields.map((rawField) => {
+              {form!.fields.map((rawField) => {
                 const field = displayField(rawField);
                 return (
                 <label key={field.id} className={`tap-label ${field.field_type === "long_text" ? "sm:col-span-2" : ""}`}>

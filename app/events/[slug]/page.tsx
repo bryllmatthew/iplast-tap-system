@@ -4,11 +4,15 @@ import { Calendar, Clock, MapPin, Users } from "lucide-react";
 
 import { getEventBySlug } from "@/lib/repository";
 import { eventTimeRange, shortDate } from "@/lib/format";
+import { eventRegistrationStatusLabel, isEventRegistrationOpen } from "@/lib/event-registration";
+
+export const dynamic = "force-dynamic";
 
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const event = await getEventBySlug(slug);
   if (!event) notFound();
+  const registrationOpen = isEventRegistrationOpen(event);
 
   return (
     <main>
@@ -17,8 +21,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-[#050507]/90 to-[#050507]" />
         <div className="tap-shell relative grid min-h-[calc(100vh-64px)] items-center gap-8 py-10 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="space-y-6">
-            <div className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-sm font-bold text-cyan-800">
-              Registration open
+            <div className={`inline-flex rounded-full border px-3 py-1 text-sm font-bold ${registrationOpen ? "border-cyan-200 bg-cyan-50 text-cyan-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+              {eventRegistrationStatusLabel(event)}
             </div>
             <h1 className="text-4xl font-black tracking-normal sm:text-6xl">{event.event_name}</h1>
             <p className="max-w-2xl text-lg leading-8 text-white/82">{event.description}</p>
@@ -40,9 +44,13 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 <span>{event.maximum_creator_capacity} creator slots</span>
               </div>
             </div>
-            <Link className="tap-button tap-button-primary" href={`/events/${event.event_slug}/register`}>
-              Register Now
-            </Link>
+            {registrationOpen ? (
+              <Link className="tap-button tap-button-primary" href={`/events/${event.event_slug}/register`}>
+                Register Now
+              </Link>
+            ) : (
+              <span className="tap-button tap-button-secondary opacity-85">Registration Closed</span>
+            )}
           </div>
           <div>
             <img

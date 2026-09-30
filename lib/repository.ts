@@ -19,6 +19,7 @@ import {
   demoSeller
 } from "@/lib/demo-data";
 import { cleanEnv } from "@/lib/clean-env";
+import { isEventRegistrationOpen } from "@/lib/event-registration";
 import { appUrl, canonicalAppUrl } from "@/lib/env";
 import { defaultRegistrationFields, registrationFieldsFromFormData, sortRegistrationFields } from "@/lib/registration-fields";
 import { normalizeSellerUsername, sellerUsernameToAuthEmail } from "@/lib/seller-login";
@@ -2686,6 +2687,7 @@ export async function updateCampaignApplicationStatus(applicationId: string, sta
 export async function submitRegistration(slug: string, formData: FormData) {
   const event = await getEventBySlug(slug);
   if (!event) return { ok: false, message: "Event not found." };
+  if (!isEventRegistrationOpen(event)) return { ok: false, message: "Registration for this event is closed." };
 
   const form = await getPublishedForm(event.id);
   if (!form) return { ok: false, message: "Registration is not open." };

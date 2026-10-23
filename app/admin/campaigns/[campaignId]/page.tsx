@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { updateCampaignApplicationStatusAction } from "@/app/actions";
+import { reviewCampaignOutputAction, updateCampaignApplicationStatusAction } from "@/app/actions";
 import { CampaignForm } from "@/components/CampaignForm";
 import { number, time } from "@/lib/format";
 import { getCampaignDetail, listCampaignBrandOptions } from "@/lib/repository";
@@ -98,7 +98,7 @@ export default async function AdminCampaignDetailPage({
           <p className="mt-2 text-sm text-slate-600">Review creator details, application notes, and campaign approval status.</p>
         </div>
         <div className="divide-y divide-slate-100">
-          {detail.applicationRows.map(({ application, creator }) => (
+          {detail.applicationRows.map(({ application, creator, output, posting }) => (
             <div key={application.id} className="grid gap-4 p-4 xl:grid-cols-[1fr_auto]">
               <div className="min-w-0">
                 {creator ? (
@@ -114,6 +114,26 @@ export default async function AdminCampaignDetailPage({
                   <span>Applied {time(application.applied_at)}</span>
                 </div>
                 <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-600">{application.application_message || "No application message."}</p>
+                {application.status === "approved" ? (
+                  <div className="mt-3 rounded-lg border border-slate-200 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-black text-ink">Final Output</p>
+                      <span className="status-pill bg-slate-100 text-slate-700">{output?.status || "not_submitted"}</span>
+                    </div>
+                    {output?.final_output_link ? <a className="mt-2 block break-all text-sm font-bold text-cyan-700 underline" href={output.final_output_link} target="_blank" rel="noreferrer">Open submitted output</a> : null}
+                    {output?.submission_notes ? <p className="mt-2 text-sm text-slate-500">{output.submission_notes}</p> : null}
+                    {output && output.status !== "approved" ? (
+                      <form action={reviewCampaignOutputAction} className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto]">
+                        <input type="hidden" name="output_id" value={output.id} />
+                        <input type="hidden" name="campaign_id" value={detail.campaign.id} />
+                        <input className="tap-input" name="review_notes" placeholder="Feedback for creator" defaultValue={output.review_notes} />
+                        <button className="tap-button tap-button-primary" type="submit" name="status" value="approved">Approve Output</button>
+                        <button className="tap-button tap-button-danger" type="submit" name="status" value="changes_requested">Request Changes</button>
+                      </form>
+                    ) : null}
+                    {posting ? <a className="mt-3 block break-all text-sm font-bold text-green-700 underline" href={posting.posted_video_link} target="_blank" rel="noreferrer">Published video link</a> : null}
+                  </div>
+                ) : null}
               </div>
               <div className="flex flex-wrap items-start gap-2 xl:justify-end">
                 <span className="status-pill bg-slate-100 text-slate-700">{application.status}</span>

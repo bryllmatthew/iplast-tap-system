@@ -76,6 +76,8 @@ export type Creator = {
   affiliate_experience: string;
   profile_image?: string;
   notes?: string;
+  community_joined_at?: string;
+  community_joined_via?: string;
 };
 
 export type CreatorAccount = {
@@ -230,6 +232,43 @@ export type CampaignApplication = {
   reviewed_at?: string;
   reviewed_by?: string;
   rejection_reason?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CampaignOutput = {
+  id: string;
+  application_id: string;
+  final_output_link?: string;
+  submission_notes: string;
+  status: "not_submitted" | "pending_review" | "changes_requested" | "approved";
+  review_notes: string;
+  submitted_at?: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+  approved_at?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CampaignPosting = {
+  id: string;
+  application_id: string;
+  posted_video_link: string;
+  submitted_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreatorCommunitySettings = {
+  id: string;
+  organization_id: string;
+  community_name: string;
+  headline: string;
+  description: string;
+  viber_community_link?: string;
+  viber_qr_image_url?: string;
+  updated_by?: string;
   created_at: string;
   updated_at: string;
 };

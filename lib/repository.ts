@@ -28,8 +28,11 @@ import type {
   AffiliateCampaign,
   Brand,
   CampaignApplication,
+  CampaignOutput,
+  CampaignPosting,
   Creator,
   CreatorAccount,
+  CreatorCommunitySettings,
   CreatorQr,
   Event,
   EventProduct,
@@ -64,6 +67,9 @@ type DemoState = {
   creatorAccounts?: CreatorAccount[];
   campaigns?: AffiliateCampaign[];
   campaignApplications?: CampaignApplication[];
+  campaignOutputs?: CampaignOutput[];
+  campaignPostings?: CampaignPosting[];
+  communitySettings?: CreatorCommunitySettings;
   forms: FormVersion[];
 };
 
@@ -76,6 +82,12 @@ const productSelect =
   "id,brand_id,product_name,sku,pid,product_link,image_url,description,sample_inventory,max_claims_per_creator,status";
 const campaignSelect =
   "id,organization_id,campaign_name,campaign_slug,brand_id,open_plan_commission,campaign_mechanics,campaign_requirements,campaign_assets_url,sample_video_links,campaign_product_link,status,created_by,created_at,updated_at";
+const campaignOutputSelect =
+  "id,application_id,final_output_link,submission_notes,status,review_notes,submitted_at,reviewed_at,reviewed_by,approved_at,created_at,updated_at";
+const campaignPostingSelect =
+  "id,application_id,posted_video_link,submitted_at,created_at,updated_at";
+const communitySettingsSelect =
+  "id,organization_id,community_name,headline,description,viber_community_link,viber_qr_image_url,updated_by,created_at,updated_at";
 
 function createServiceClient() {
   const url = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -171,7 +183,9 @@ function creatorFromRow(row: Record<string, unknown>): Creator {
     content_categories: Array.isArray(row.content_categories) ? row.content_categories.map(String) : [],
     affiliate_experience: String(row.affiliate_experience || ""),
     profile_image: row.profile_image ? String(row.profile_image) : undefined,
-    notes: row.notes ? String(row.notes) : undefined
+    notes: row.notes ? String(row.notes) : undefined,
+    community_joined_at: row.community_joined_at ? String(row.community_joined_at) : undefined,
+    community_joined_via: row.community_joined_via ? String(row.community_joined_via) : undefined
   };
 }
 
@@ -289,6 +303,49 @@ function campaignApplicationFromRow(row: Record<string, unknown>): CampaignAppli
   };
 }
 
+function campaignOutputFromRow(row: Record<string, unknown>): CampaignOutput {
+  return {
+    id: String(row.id),
+    application_id: String(row.application_id),
+    final_output_link: row.final_output_link ? String(row.final_output_link) : undefined,
+    submission_notes: String(row.submission_notes || ""),
+    status: String(row.status || "not_submitted") as CampaignOutput["status"],
+    review_notes: String(row.review_notes || ""),
+    submitted_at: row.submitted_at ? String(row.submitted_at) : undefined,
+    reviewed_at: row.reviewed_at ? String(row.reviewed_at) : undefined,
+    reviewed_by: row.reviewed_by ? String(row.reviewed_by) : undefined,
+    approved_at: row.approved_at ? String(row.approved_at) : undefined,
+    created_at: String(row.created_at || ""),
+    updated_at: String(row.updated_at || "")
+  };
+}
+
+function campaignPostingFromRow(row: Record<string, unknown>): CampaignPosting {
+  return {
+    id: String(row.id),
+    application_id: String(row.application_id),
+    posted_video_link: String(row.posted_video_link || ""),
+    submitted_at: String(row.submitted_at || ""),
+    created_at: String(row.created_at || ""),
+    updated_at: String(row.updated_at || "")
+  };
+}
+
+function communitySettingsFromRow(row: Record<string, unknown>): CreatorCommunitySettings {
+  return {
+    id: String(row.id),
+    organization_id: String(row.organization_id),
+    community_name: String(row.community_name || "VisMin Creators Club"),
+    headline: String(row.headline || "Join the VisMin Creators Club community"),
+    description: String(row.description || ""),
+    viber_community_link: row.viber_community_link ? String(row.viber_community_link) : undefined,
+    viber_qr_image_url: row.viber_qr_image_url ? String(row.viber_qr_image_url) : undefined,
+    updated_by: row.updated_by ? String(row.updated_by) : undefined,
+    created_at: String(row.created_at || ""),
+    updated_at: String(row.updated_at || "")
+  };
+}
+
 function eventProductFromRow(row: Record<string, unknown>): EventProduct {
   return {
     id: String(row.id),
@@ -362,7 +419,7 @@ async function loadDbStateUncached(): Promise<DemoState | null> {
     supabase.from("event_sellers").select("id,event_id,seller_id,booth_name,booth_number,status"),
     supabase
       .from("creators")
-      .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+      .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes,community_joined_at,community_joined_via")
       .order("created_at", { ascending: false }),
     supabase.from("event_form_responses").select("id,event_id,creator_id,form_version_id,field_snapshot,answers,submitted_at"),
     supabase.from("event_registrations").select("id,event_id,creator_id,form_response_id,registration_status,registered_at,approved_at,notes"),
@@ -1357,9 +1414,11 @@ export async function listAdminCampaigns() {
     if (!campaigns.length) return [];
     const brandIds = unique(campaigns.map((campaign) => campaign.brand_id));
     const campaignIds = unique(campaigns.map((campaign) => campaign.id));
-    const [brandsResult, applicationsResult] = await Promise.all([
+    const [brandsResult, applicationsResult, outputsResult, postingsResult] = await Promise.all([
       supabase.from("brands").select("id,seller_id,brand_name,logo_url,description,status").in("id", brandIds),
-      supabase.from("campaign_applications").select("id,campaign_id,creator_id,status,application_message,applied_at,reviewed_at,reviewed_by,rejection_reason,created_at,updated_at").in("campaign_id", campaignIds)
+      supabase.from("campaign_applications").select("id,campaign_id,creator_id,status,application_message,applied_at,reviewed_at,reviewed_by,rejection_reason,created_at,updated_at").in("campaign_id", campaignIds),
+      supabase.from("campaign_outputs").select(campaignOutputSelect),
+      supabase.from("campaign_postings").select(campaignPostingSelect)
     ]);
     const brands = (brandsResult.data || []).map(brandFromRow);
     const sellerIds = unique(brands.map((brand) => brand.seller_id));
@@ -1367,6 +1426,8 @@ export async function listAdminCampaigns() {
     const sellers = mapById((sellerRows || []).map(sellerFromRow));
     const brandMap = mapById(brands);
     const applications = (applicationsResult.data || []).map(campaignApplicationFromRow);
+    const outputs = (outputsResult.data || []).map(campaignOutputFromRow);
+    const postings = (postingsResult.data || []).map(campaignPostingFromRow);
     const creatorIds = unique(applications.map((application) => application.creator_id));
     const { data: creatorRows } = creatorIds.length
       ? await supabase
@@ -1386,7 +1447,9 @@ export async function listAdminCampaigns() {
         applications: campaignApplications,
         applicationRows: campaignApplications.map((application) => ({
           application,
-          creator: creators.get(application.creator_id)
+          creator: creators.get(application.creator_id),
+          output: outputs.find((output) => output.application_id === application.id),
+          posting: postings.find((posting) => posting.application_id === application.id)
         }))
       };
     });
@@ -1403,7 +1466,9 @@ export async function listAdminCampaigns() {
       applications: campaignApplications,
       applicationRows: campaignApplications.map((application) => ({
         application,
-        creator: s.creators.find((creator) => creator.id === application.creator_id)
+        creator: s.creators.find((creator) => creator.id === application.creator_id),
+        output: s.campaignOutputs?.find((output) => output.application_id === application.id),
+        posting: s.campaignPostings?.find((posting) => posting.application_id === application.id)
       }))
     };
   });
@@ -2377,6 +2442,46 @@ export async function listAttendedCreators(query = "") {
     });
 }
 
+export async function listCreatorDatabase(query = "") {
+  const needle = query.trim().toLowerCase();
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: creatorRows, error } = await supabase
+      .from("creators")
+      .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes,community_joined_at,community_joined_via")
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Failed to load creator database", error);
+      return [];
+    }
+    const creators = (creatorRows || []).map(creatorFromRow).filter((creator) => {
+      if (!needle) return true;
+      return [creator.full_name, creator.email, creator.mobile, creator.tiktok_username, creator.location].some((value) => value.toLowerCase().includes(needle));
+    });
+    const creatorIds = unique(creators.map((creator) => creator.id));
+    const { data: attendanceRows } = creatorIds.length
+      ? await supabase.from("event_attendance").select("creator_id,status,checked_in_at").in("creator_id", creatorIds).eq("status", "checked_in")
+      : { data: [] };
+    const attendanceMap = new Map<string, { count: number; latest?: string }>();
+    for (const row of attendanceRows || []) {
+      const current = attendanceMap.get(String(row.creator_id)) || { count: 0 };
+      current.count += 1;
+      const checkedInAt = row.checked_in_at ? String(row.checked_in_at) : undefined;
+      if (checkedInAt && (!current.latest || checkedInAt > current.latest)) current.latest = checkedInAt;
+      attendanceMap.set(String(row.creator_id), current);
+    }
+    return creators.map((creator) => ({ creator, attendedEvents: attendanceMap.get(creator.id)?.count || 0, latestCheckedInAt: attendanceMap.get(creator.id)?.latest }));
+  }
+
+  const s = (await loadDbState()) || state();
+  return s.creators
+    .filter((creator) => !needle || [creator.full_name, creator.email, creator.mobile, creator.tiktok_username, creator.location].some((value) => value.toLowerCase().includes(needle)))
+    .map((creator) => {
+      const attendance = s.attendance.filter((item) => item.creator_id === creator.id && item.status === "checked_in");
+      return { creator, attendedEvents: attendance.length, latestCheckedInAt: attendance.sort((a, b) => String(b.checked_in_at || "").localeCompare(String(a.checked_in_at || "")))[0]?.checked_in_at };
+    });
+}
+
 export async function getCreatorDetail(creatorId: string) {
   const supabase = createServiceClient();
   if (supabase) {
@@ -2576,13 +2681,15 @@ export async function listCreatorCampaigns(userId: string) {
     if (!campaigns.length) return [];
     const brandIds = unique(campaigns.map((campaign) => campaign.brand_id));
     const campaignIds = unique(campaigns.map((campaign) => campaign.id));
-    const [brandsResult, applicationsResult] = await Promise.all([
+    const [brandsResult, applicationsResult, outputsResult, postingsResult] = await Promise.all([
       supabase.from("brands").select("id,seller_id,brand_name,logo_url,description,status").in("id", brandIds),
       supabase
         .from("campaign_applications")
         .select("id,campaign_id,creator_id,status,application_message,applied_at,reviewed_at,reviewed_by,rejection_reason,created_at,updated_at")
         .in("campaign_id", campaignIds)
-        .eq("creator_id", account.creator_id)
+        .eq("creator_id", account.creator_id),
+      supabase.from("campaign_outputs").select(campaignOutputSelect),
+      supabase.from("campaign_postings").select(campaignPostingSelect)
     ]);
     const brands = (brandsResult.data || []).map(brandFromRow);
     const sellerIds = unique(brands.map((brand) => brand.seller_id));
@@ -2590,6 +2697,8 @@ export async function listCreatorCampaigns(userId: string) {
     const sellers = mapById((sellerRows || []).map(sellerFromRow));
     const brandMap = mapById(brands);
     const applications = (applicationsResult.data || []).map(campaignApplicationFromRow);
+    const outputs = (outputsResult.data || []).map(campaignOutputFromRow);
+    const postings = (postingsResult.data || []).map(campaignPostingFromRow);
 
     return campaigns.map((campaign) => {
       const brand = brandMap.get(campaign.brand_id);
@@ -2597,7 +2706,9 @@ export async function listCreatorCampaigns(userId: string) {
         campaign,
         brand,
         seller: brand ? sellers.get(brand.seller_id) : undefined,
-        application: applications.find((application) => application.campaign_id === campaign.id)
+        application: applications.find((application) => application.campaign_id === campaign.id),
+        output: outputs.find((output) => output.application_id === applications.find((application) => application.campaign_id === campaign.id)?.id),
+        posting: postings.find((posting) => posting.application_id === applications.find((application) => application.campaign_id === campaign.id)?.id)
       };
     });
   }
@@ -2650,6 +2761,183 @@ export async function applyToCampaign(userId: string, campaignId: string, messag
   }
 
   return { ok: false, message: "Campaign applications require Supabase." };
+}
+
+export async function submitCampaignOutput(userId: string, campaignId: string, link: string, notes: string) {
+  const account = await getCreatorAccountForUser(userId);
+  if (!account) return { ok: false, message: "Creator account not found." };
+  if (!link.startsWith("http://") && !link.startsWith("https://")) return { ok: false, message: "Enter a valid Google Drive or file link." };
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: application, error: applicationError } = await supabase
+      .from("campaign_applications")
+      .select("id")
+      .eq("campaign_id", campaignId)
+      .eq("creator_id", account.creator_id)
+      .eq("status", "approved")
+      .maybeSingle();
+    if (applicationError) return { ok: false, message: applicationError.message };
+    if (!application) return { ok: false, message: "Only approved campaign creators can submit final outputs." };
+
+    const { error } = await supabase.from("campaign_outputs").upsert({
+      application_id: application.id,
+      final_output_link: link,
+      submission_notes: notes,
+      status: "pending_review",
+      review_notes: "",
+      submitted_at: new Date().toISOString(),
+      reviewed_at: null,
+      reviewed_by: null,
+      approved_at: null,
+      updated_at: new Date().toISOString()
+    }, { onConflict: "application_id" });
+    if (error) return { ok: false, message: error.message };
+    return { ok: true, message: "Final output submitted for TAP review." };
+  }
+
+  return { ok: false, message: "Campaign output submissions require Supabase." };
+}
+
+export async function submitCampaignPosting(userId: string, campaignId: string, link: string) {
+  const account = await getCreatorAccountForUser(userId);
+  if (!account) return { ok: false, message: "Creator account not found." };
+  if (!link.startsWith("http://") && !link.startsWith("https://")) return { ok: false, message: "Enter a valid published video link." };
+
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data: application, error: applicationError } = await supabase
+      .from("campaign_applications")
+      .select("id")
+      .eq("campaign_id", campaignId)
+      .eq("creator_id", account.creator_id)
+      .eq("status", "approved")
+      .maybeSingle();
+    if (applicationError) return { ok: false, message: applicationError.message };
+    if (!application) return { ok: false, message: "Only approved campaign creators can submit published videos." };
+
+    const { data: output, error: outputError } = await supabase
+      .from("campaign_outputs")
+      .select("status")
+      .eq("application_id", application.id)
+      .maybeSingle();
+    if (outputError) return { ok: false, message: outputError.message };
+    if (output?.status !== "approved") return { ok: false, message: "TAP must approve your final output before you submit a published video." };
+
+    const { error } = await supabase.from("campaign_postings").upsert({
+      application_id: application.id,
+      posted_video_link: link,
+      submitted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }, { onConflict: "application_id" });
+    if (error) return { ok: false, message: error.message };
+    return { ok: true, message: "Published video link saved for monitoring." };
+  }
+
+  return { ok: false, message: "Published video submissions require Supabase." };
+}
+
+export async function reviewCampaignOutput(outputId: string, status: CampaignOutput["status"], reviewNotes: string, reviewerId?: string) {
+  if (!["pending_review", "changes_requested", "approved"].includes(status)) return { ok: false, message: "Invalid output status." };
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("campaign_outputs")
+      .update({
+        status,
+        review_notes: reviewNotes,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: reviewerId || null,
+        approved_at: status === "approved" ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", outputId)
+      .select("application_id")
+      .maybeSingle();
+    if (error) return { ok: false, message: error.message };
+    if (!data) return { ok: false, message: "Campaign output not found." };
+    return { ok: true, message: status === "approved" ? "Final output approved. Creator can now post." : "Output review updated.", applicationId: String(data.application_id) };
+  }
+  return { ok: false, message: "Output reviews require Supabase." };
+}
+
+export async function getCommunitySettings() {
+  const supabase = createServiceClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("creator_community_settings")
+      .select(communitySettingsSelect)
+      .eq("organization_id", defaultOrganizationId)
+      .maybeSingle();
+    if (error) console.error("Failed to load community settings", error);
+    if (data) return communitySettingsFromRow(data);
+  }
+  return {
+    id: "community-demo",
+    organization_id: defaultOrganizationId,
+    community_name: "VisMin Creators Club",
+    headline: "Join the VisMin Creators Club community",
+    description: "Join our creator community for campaign opportunities, event invitations, product samples, and creator updates.",
+    viber_community_link: undefined,
+    viber_qr_image_url: undefined,
+    created_at: "",
+    updated_at: ""
+  } satisfies CreatorCommunitySettings;
+}
+
+export async function saveCommunitySettings(formData: FormData, userId: string, qrImageUrl?: string) {
+  const payload = {
+    organization_id: defaultOrganizationId,
+    community_name: String(formData.get("community_name") || "VisMin Creators Club").trim(),
+    headline: String(formData.get("headline") || "Join the VisMin Creators Club community").trim(),
+    description: String(formData.get("description") || "").trim(),
+    viber_community_link: String(formData.get("viber_community_link") || "").trim() || null,
+    ...(qrImageUrl ? { viber_qr_image_url: qrImageUrl } : {}),
+    updated_by: userId,
+    updated_at: new Date().toISOString()
+  };
+  const supabase = createServiceClient();
+  if (!supabase) return { ok: false, message: "Community settings require Supabase." };
+  const { error } = await supabase.from("creator_community_settings").upsert(payload, { onConflict: "organization_id" });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: "Community settings saved." };
+}
+
+export async function joinCreatorCommunity(formData: FormData) {
+  const fullName = String(formData.get("full_name") || "").trim();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const mobile = String(formData.get("viber_number") || "").trim();
+  const tiktokUsername = String(formData.get("tiktok_username") || "").trim().replace(/^@/, "");
+  const tiktokProfileUrl = String(formData.get("tiktok_profile_url") || "").trim();
+  if (!fullName || !email || !mobile) return { ok: false, message: "Name, email, and Viber number are required." };
+
+  const supabase = await ensureOrganization();
+  if (!supabase) return { ok: false, message: "Community registration requires Supabase." };
+  const { data: existing, error: lookupError } = await supabase
+    .from("creators")
+    .select("id")
+    .eq("organization_id", defaultOrganizationId)
+    .ilike("email", email)
+    .maybeSingle();
+  if (lookupError) return { ok: false, message: lookupError.message };
+
+  const payload = {
+    full_name: fullName,
+    tiktok_username: tiktokUsername,
+    tiktok_profile_url: tiktokProfileUrl || null,
+    email,
+    mobile,
+    notes: "Joined VisMin Creators Club community.",
+    community_joined_at: new Date().toISOString(),
+    community_joined_via: "public_community_signup",
+    updated_at: new Date().toISOString()
+  };
+  const query = existing
+    ? supabase.from("creators").update(payload).eq("id", existing.id)
+    : supabase.from("creators").insert({ organization_id: defaultOrganizationId, follower_count: 0, gmv_max_total: 0, creator_category: "", content_categories: [], affiliate_experience: "", ...payload });
+  const { error } = await query;
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: "Welcome to the VisMin Creators Club community." };
 }
 
 export async function updateCampaignApplicationStatus(applicationId: string, status: CampaignApplication["status"], reviewerId?: string) {

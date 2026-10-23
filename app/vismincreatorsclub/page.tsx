@@ -39,6 +39,9 @@ export default async function VisMinCreatorsClubPage() {
               <Link className="tap-button tap-button-secondary" href="/events">
                 Check All Events
               </Link>
+              <Link className="tap-button tap-button-secondary" href="/vismincreatorsclub/community">
+                Join Creator Community
+              </Link>
             </div>
           </div>
 

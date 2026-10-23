@@ -20,8 +20,13 @@ import {
   getSellerDetail,
   issueSampleClaim,
   removeSellerEvent,
+  joinCreatorCommunity,
+  reviewCampaignOutput,
+  saveCommunitySettings,
   saveCampaign,
   setRegistrationStatus,
+  submitCampaignOutput,
+  submitCampaignPosting,
   submitRegistration,
   updateCampaignApplicationStatus,
   updateSeller,
@@ -397,6 +402,51 @@ export async function updateCampaignApplicationStatusAction(formData: FormData) 
   revalidatePath("/creator/campaigns");
   if (campaignId) revalidatePath(`/creator/campaigns/${campaignId}`);
   redirect(`/admin/campaigns/${campaignId}?${params.toString()}`);
+}
+
+export async function submitCampaignOutputAction(formData: FormData) {
+  const user = await requireAuth("creator");
+  const campaignId = String(formData.get("campaign_id") || "");
+  const result = await submitCampaignOutput(user.id, campaignId, String(formData.get("final_output_link") || "").trim(), String(formData.get("submission_notes") || "").trim());
+  revalidatePath(`/creator/campaigns/${campaignId}`);
+  revalidatePath(`/admin/campaigns/${campaignId}`);
+  redirect(`/creator/campaigns/${campaignId}?message=${encodeURIComponent(result.message)}&result=${result.ok ? "success" : "error"}`);
+}
+
+export async function submitCampaignPostingAction(formData: FormData) {
+  const user = await requireAuth("creator");
+  const campaignId = String(formData.get("campaign_id") || "");
+  const result = await submitCampaignPosting(user.id, campaignId, String(formData.get("posted_video_link") || "").trim());
+  revalidatePath(`/creator/campaigns/${campaignId}`);
+  revalidatePath(`/admin/campaigns/${campaignId}`);
+  redirect(`/creator/campaigns/${campaignId}?message=${encodeURIComponent(result.message)}&result=${result.ok ? "success" : "error"}`);
+}
+
+export async function reviewCampaignOutputAction(formData: FormData) {
+  const user = await requireAuth("admin");
+  const outputId = String(formData.get("output_id") || "");
+  const campaignId = String(formData.get("campaign_id") || "");
+  const status = String(formData.get("status") || "") as Parameters<typeof reviewCampaignOutput>[1];
+  const result = await reviewCampaignOutput(outputId, status, String(formData.get("review_notes") || "").trim(), user.id);
+  revalidatePath(`/admin/campaigns/${campaignId}`);
+  revalidatePath(`/creator/campaigns/${campaignId}`);
+  redirect(`/admin/campaigns/${campaignId}?appMessage=${encodeURIComponent(result.message)}&appResult=${result.ok ? "success" : "error"}`);
+}
+
+export async function saveCommunitySettingsAction(formData: FormData) {
+  const user = await requireAuth("admin");
+  const qr = formData.get("viber_qr_image");
+  let qrImageUrl: string | undefined;
+  if (qr instanceof File && qr.size > 0) qrImageUrl = await savePublicUpload(qr);
+  const result = await saveCommunitySettings(formData, user.id, qrImageUrl);
+  revalidatePath("/admin/community");
+  revalidatePath("/vismincreatorsclub/community");
+  redirect(`/admin/community?message=${encodeURIComponent(result.message)}&result=${result.ok ? "success" : "error"}`);
+}
+
+export async function joinCreatorCommunityAction(formData: FormData) {
+  const result = await joinCreatorCommunity(formData);
+  redirect(`/vismincreatorsclub/community?message=${encodeURIComponent(result.message)}&result=${result.ok ? "success" : "error"}`);
 }
 
 export async function deleteSellerAction(formData: FormData) {

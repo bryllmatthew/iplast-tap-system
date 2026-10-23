@@ -8,6 +8,7 @@ const adminLinks = [
   ["Dashboard", "/admin", LayoutDashboard],
   ["Events", "/admin/events", CalendarDays],
   ["Campaigns", "/admin/campaigns", Megaphone],
+  ["Community", "/admin/community", Users],
   ["Creators", "/admin/creators", Users],
   ["Sellers", "/admin/sellers", Store],
   ["Reports", "/admin/reports", BarChart3]

@@ -2,12 +2,12 @@ import Link from "next/link";
 import { CalendarDays, PackageCheck, Store, Users } from "lucide-react";
 
 import { number } from "@/lib/format";
-import { getClaimRows, listAttendedCreators, listEvents, listSellerDatabaseRows } from "@/lib/repository";
+import { getClaimRows, listCreatorDatabase, listEvents, listSellerDatabaseRows } from "@/lib/repository";
 
 export default async function AdminDashboard() {
   const [events, attendedCreators, sellers, claims] = await Promise.all([
     listEvents(),
-    listAttendedCreators(),
+    listCreatorDatabase(),
     listSellerDatabaseRows(),
     getClaimRows()
   ]);

@@ -70,6 +70,7 @@ export default async function CreatorDetailPage({
             <Info label="Shopee Last Month GMV" value={currency(shopeeGmv)} />
             <Info label="Content Categories" value={creator.content_categories.join(", ")} />
             <Info label="Affiliate Experience" value={creator.affiliate_experience} />
+            <Info label="Community Membership" value={creator.community_joined_at ? `Joined ${shortDate(creator.community_joined_at)}` : "Not joined"} />
             <Info label="Notes" value={creator.notes || "-"} />
           </div>
         </section>

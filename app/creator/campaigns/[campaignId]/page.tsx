@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { applyToCampaignAction } from "@/app/actions";
+import { applyToCampaignAction, submitCampaignOutputAction, submitCampaignPostingAction } from "@/app/actions";
 import { requireAuth } from "@/lib/auth";
 import { number } from "@/lib/format";
 import { getCreatorCampaignDetail } from "@/lib/repository";
@@ -18,7 +18,7 @@ export default async function CreatorCampaignDetailPage({
   const query = await searchParams;
   const detail = await getCreatorCampaignDetail(user.id, campaignId);
   if (!detail) notFound();
-  const { campaign, brand, seller, application } = detail;
+  const { campaign, brand, seller, application, output, posting } = detail;
   const isApproved = application?.status === "approved";
 
   return (
@@ -94,6 +94,48 @@ export default async function CreatorCampaignDetailPage({
           )}
         </aside>
       </div>
+
+      {isApproved ? (
+        <section className="grid gap-5 xl:grid-cols-2">
+          <section className="tap-card p-5">
+            <h2 className="text-xl font-black text-ink">Final Output Review</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Upload the Google Drive or file link containing your required campaign videos. TAP must approve it before you post.</p>
+            {output?.status === "approved" ? (
+              <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-700">Approved. You have the go signal to post.</div>
+            ) : null}
+            {output?.status === "changes_requested" ? (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">Changes requested: {output.review_notes || "Please review TAP feedback and resubmit."}</div>
+            ) : null}
+            <form action={submitCampaignOutputAction} className="mt-4 grid gap-3">
+              <input type="hidden" name="campaign_id" value={campaign.id} />
+              <label className="tap-label">
+                Final Output Link
+                <input className="tap-input" name="final_output_link" required type="url" defaultValue={output?.final_output_link || ""} placeholder="https://drive.google.com/..." />
+              </label>
+              <label className="tap-label">
+                Notes for TAP
+                <textarea className="tap-input min-h-24" name="submission_notes" defaultValue={output?.submission_notes || ""} placeholder="Tell TAP what is included in the folder." />
+              </label>
+              <button className="tap-button tap-button-primary" type="submit">Submit Final Output</button>
+            </form>
+          </section>
+
+          <section className="tap-card p-5">
+            <h2 className="text-xl font-black text-ink">Published Video Monitoring</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">After TAP approves your final output, post the published videos and paste the live link here.</p>
+            {output?.status !== "approved" ? <div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm font-bold text-slate-500">Waiting for final output approval.</div> : null}
+            {posting ? <a className="mt-4 block break-all rounded-lg bg-slate-50 p-4 text-sm font-bold text-cyan-700 underline" href={posting.posted_video_link} target="_blank" rel="noreferrer">{posting.posted_video_link}</a> : null}
+            <form action={submitCampaignPostingAction} className="mt-4 grid gap-3">
+              <input type="hidden" name="campaign_id" value={campaign.id} />
+              <label className="tap-label">
+                Published Video Link
+                <input className="tap-input" name="posted_video_link" required type="url" defaultValue={posting?.posted_video_link || ""} placeholder="https://www.tiktok.com/..." />
+              </label>
+              <button className="tap-button tap-button-secondary" type="submit" disabled={output?.status !== "approved"}>Save Published Link</button>
+            </form>
+          </section>
+        </section>
+      ) : null}
     </section>
   );
 }

@@ -2451,12 +2451,12 @@ export async function listCreatorDatabase(query = "") {
       .from("creators")
       .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,shipping_address,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes,community_joined_at,community_joined_via")
       .order("created_at", { ascending: false });
-    if (error?.message?.toLowerCase().includes("shipping_address")) {
+    if (error) {
       const fallback = await supabase
         .from("creators")
-        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes,community_joined_at,community_joined_via")
+        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
         .order("created_at", { ascending: false });
-      creatorRows = (fallback.data || []).map((row) => ({ ...row, shipping_address: null }));
+      creatorRows = (fallback.data || []).map((row) => ({ ...row, shipping_address: null, community_joined_at: null, community_joined_via: null }));
       error = fallback.error;
     }
     if (error) {

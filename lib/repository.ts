@@ -2460,9 +2460,13 @@ export async function listCreatorDatabase(query = "") {
       return [creator.full_name, creator.email, creator.mobile, creator.tiktok_username, creator.location].some((value) => value.toLowerCase().includes(needle));
     });
     const creatorIds = unique(creators.map((creator) => creator.id));
-    const { data: attendanceRows } = creatorIds.length
-      ? await supabase.from("event_attendance").select("creator_id,status,checked_in_at").in("creator_id", creatorIds).eq("status", "checked_in")
-      : { data: [] };
+    const [{ data: attendanceRows }, { data: registrationRows }] = creatorIds.length
+      ? await Promise.all([
+          supabase.from("event_attendance").select("creator_id,status,checked_in_at").in("creator_id", creatorIds).eq("status", "checked_in"),
+          supabase.from("event_registrations").select("creator_id").in("creator_id", creatorIds)
+        ])
+      : [{ data: [] }, { data: [] }];
+    const eventCreatorIds = new Set((registrationRows || []).map((row) => String(row.creator_id)));
     const attendanceMap = new Map<string, { count: number; latest?: string }>();
     for (const row of attendanceRows || []) {
       const current = attendanceMap.get(String(row.creator_id)) || { count: 0 };
@@ -2471,7 +2475,12 @@ export async function listCreatorDatabase(query = "") {
       if (checkedInAt && (!current.latest || checkedInAt > current.latest)) current.latest = checkedInAt;
       attendanceMap.set(String(row.creator_id), current);
     }
-    return creators.map((creator) => ({ creator, attendedEvents: attendanceMap.get(creator.id)?.count || 0, latestCheckedInAt: attendanceMap.get(creator.id)?.latest }));
+    return creators.map((creator) => ({
+      creator,
+      isEventCreator: eventCreatorIds.has(creator.id),
+      attendedEvents: attendanceMap.get(creator.id)?.count || 0,
+      latestCheckedInAt: attendanceMap.get(creator.id)?.latest
+    }));
   }
 
   const s = (await loadDbState()) || state();
@@ -2479,7 +2488,12 @@ export async function listCreatorDatabase(query = "") {
     .filter((creator) => !needle || [creator.full_name, creator.email, creator.mobile, creator.tiktok_username, creator.location].some((value) => value.toLowerCase().includes(needle)))
     .map((creator) => {
       const attendance = s.attendance.filter((item) => item.creator_id === creator.id && item.status === "checked_in");
-      return { creator, attendedEvents: attendance.length, latestCheckedInAt: attendance.sort((a, b) => String(b.checked_in_at || "").localeCompare(String(a.checked_in_at || "")))[0]?.checked_in_at };
+      return {
+        creator,
+        isEventCreator: s.registrations.some((registration) => registration.creator_id === creator.id),
+        attendedEvents: attendance.length,
+        latestCheckedInAt: attendance.sort((a, b) => String(b.checked_in_at || "").localeCompare(String(a.checked_in_at || "")))[0]?.checked_in_at
+      };
     });
 }
 

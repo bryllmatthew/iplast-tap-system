@@ -34,7 +34,7 @@ export default async function CreatorsDatabasePage({
       </div>
 
       <div className="tap-card divide-y divide-slate-100 overflow-hidden md:hidden">
-        {rows.map(({ creator, attendedEvents }) => {
+        {rows.map(({ creator, isEventCreator, attendedEvents }) => {
           return (
           <Link key={creator.id} className="block px-4 py-3 active:bg-slate-50" href={`/admin/creators/${creator.id}`}>
             <p className="font-black text-ink">{creator.full_name}</p>
@@ -43,7 +43,7 @@ export default async function CreatorsDatabasePage({
           </Link>
           );
         })}
-        {rows.length === 0 ? <div className="p-8 text-center text-slate-500">No checked-in creators found.</div> : null}
+        {rows.length === 0 ? <div className="p-8 text-center text-slate-500">No creators found.</div> : null}
       </div>
 
       <div className="tap-card hidden overflow-hidden md:block">
@@ -60,7 +60,7 @@ export default async function CreatorsDatabasePage({
               </tr>
             </thead>
             <tbody>
-        {rows.map(({ creator, attendedEvents, latestCheckedInAt }) => {
+        {rows.map(({ creator, isEventCreator, attendedEvents, latestCheckedInAt }) => {
           return (
           <tr key={creator.id} className="border-t border-slate-100">
             <td className="p-4">
@@ -68,7 +68,7 @@ export default async function CreatorsDatabasePage({
                 {creator.full_name}
               </Link>
               <p className="mt-1 text-xs text-slate-500">{creator.email}</p>
-              <span className="mt-2 inline-flex status-pill bg-cyan-50 text-cyan-700">{creator.community_joined_at ? "Community" : "Event"}</span>
+              <span className="mt-2 inline-flex status-pill bg-cyan-50 text-cyan-700">{creator.community_joined_at && isEventCreator ? "Community + Event" : creator.community_joined_at ? "Community" : isEventCreator ? "Event" : "Creator"}</span>
             </td>
             <td className="p-4 font-bold text-slate-600">@{creator.tiktok_username}</td>
             <td className="p-4 text-slate-600">{attendedEvents ? `${attendedEvents} attended` : "No event attendance"}</td>
@@ -91,7 +91,7 @@ export default async function CreatorsDatabasePage({
             </tbody>
           </table>
         </div>
-        {rows.length === 0 ? <div className="p-8 text-center text-slate-500">No checked-in creators found.</div> : null}
+        {rows.length === 0 ? <div className="p-8 text-center text-slate-500">No creators found.</div> : null}
       </div>
     </section>
   );

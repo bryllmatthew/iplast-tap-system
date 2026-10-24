@@ -18,6 +18,7 @@ import {
   deleteSeller,
   getCreatorDetail,
   getSellerDetail,
+  inviteCommunityCreators,
   issueSampleClaim,
   removeSellerEvent,
   joinCreatorCommunity,
@@ -36,7 +37,7 @@ import {
   updateEventSchedule,
   updateEventRegistrationForm
 } from "@/lib/repository";
-import { ensureCreatorAuthUser, ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, requireAuth, userHasRole } from "@/lib/auth";
+import { activateCreatorAccount, ensureCreatorAuthUser, ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, requireAuth, userHasRole } from "@/lib/auth";
 import { cleanEnv } from "@/lib/clean-env";
 import { appUrl } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -513,6 +514,27 @@ export async function grantCreatorPortalAccessAction(formData: FormData) {
     portalResult: ok ? "success" : "error"
   });
   redirect(`/admin/creators/${creatorId}?${params.toString()}`);
+}
+
+export async function activateCreatorAccountAction() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "Your invitation session has expired. Please use the email link again." };
+
+  try {
+    await activateCreatorAccount(user.id);
+    return { ok: true, message: "Creator Portal activated." };
+  } catch (error) {
+    console.error("Creator account activation failed", error);
+    return { ok: false, message: "Could not activate your Creator Portal account." };
+  }
+}
+
+export async function inviteCommunityCreatorsAction() {
+  await requireAuth("admin");
+  const result = await inviteCommunityCreators();
+  revalidatePath("/admin/creators");
+  redirect(`/admin/creators?message=${encodeURIComponent(result.message)}&result=${result.ok ? "success" : "error"}`);
 }
 
 export async function updateSellerAction(formData: FormData) {

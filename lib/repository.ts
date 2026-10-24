@@ -19,6 +19,7 @@ import {
   demoSeller
 } from "@/lib/demo-data";
 import { cleanEnv } from "@/lib/clean-env";
+import { inviteCreatorPortalAccess } from "@/lib/auth";
 import { isEventRegistrationOpen } from "@/lib/event-registration";
 import { appUrl, canonicalAppUrl } from "@/lib/env";
 import { defaultRegistrationFields, registrationFieldsFromFormData, sortRegistrationFields } from "@/lib/registration-fields";
@@ -2483,26 +2484,31 @@ export async function listCreatorDatabase(query = "") {
       if (checkedInAt && (!current.latest || checkedInAt > current.latest)) current.latest = checkedInAt;
       attendanceMap.set(String(row.creator_id), current);
     }
-    return creators.map((creator) => ({
-      creator,
-      isEventCreator: eventCreatorIds.has(creator.id),
-      attendedEvents: attendanceMap.get(creator.id)?.count || 0,
-      latestCheckedInAt: attendanceMap.get(creator.id)?.latest
-    }));
+    return creators
+      .filter((creator) => Boolean(creator.community_joined_at) || attendanceMap.has(creator.id))
+      .map((creator) => ({
+        creator,
+        isEventCreator: attendanceMap.has(creator.id),
+        attendedEvents: attendanceMap.get(creator.id)?.count || 0,
+        latestCheckedInAt: attendanceMap.get(creator.id)?.latest
+      }));
   }
 
   const s = (await loadDbState()) || state();
   return s.creators
-    .filter((creator) => !needle || [creator.full_name, creator.email, creator.mobile, creator.tiktok_username, creator.location].some((value) => value.toLowerCase().includes(needle)))
     .map((creator) => {
       const attendance = s.attendance.filter((item) => item.creator_id === creator.id && item.status === "checked_in");
       return {
         creator,
-        isEventCreator: s.registrations.some((registration) => registration.creator_id === creator.id),
+        isEventCreator: attendance.length > 0,
         attendedEvents: attendance.length,
         latestCheckedInAt: attendance.sort((a, b) => String(b.checked_in_at || "").localeCompare(String(a.checked_in_at || "")))[0]?.checked_in_at
       };
-    });
+    })
+    .filter(({ creator, isEventCreator }) =>
+      (Boolean(creator.community_joined_at) || isEventCreator) &&
+      (!needle || [creator.full_name, creator.email, creator.mobile, creator.tiktok_username, creator.location].some((value) => value.toLowerCase().includes(needle)))
+    );
 }
 
 export async function getCreatorDetail(creatorId: string) {
@@ -2966,7 +2972,41 @@ export async function joinCreatorCommunity(formData: FormData) {
     : supabase.from("creators").insert({ organization_id: defaultOrganizationId, gmv_max_total: 0, creator_category: "", content_categories: [], affiliate_experience: "", ...payload });
   const { error } = await query;
   if (error) return { ok: false, message: error.message };
-  return { ok: true, message: "Welcome to the VisMin Creators Club community." };
+  try {
+    const creatorId = existing?.id || (await supabase.from("creators").select("id").eq("organization_id", defaultOrganizationId).ilike("email", email).maybeSingle()).data?.id;
+    if (creatorId) {
+      await inviteCreatorPortalAccess({ id: creatorId, full_name: fullName }, email);
+    }
+  } catch (inviteError) {
+    console.error("Creator portal invitation failed", inviteError);
+  }
+  return { ok: true, message: "Welcome to the VisMin Creators Club community. Check your email for Creator Portal access." };
+}
+
+export async function inviteCommunityCreators() {
+  const supabase = createServiceClient();
+  if (!supabase) return { ok: false, message: "Community portal invites require Supabase." };
+
+  const { data: creators, error } = await supabase
+    .from("creators")
+    .select("id,full_name,email")
+    .not("community_joined_at", "is", null)
+    .not("email", "is", null);
+  if (error) return { ok: false, message: error.message };
+
+  let sent = 0;
+  let skipped = 0;
+  for (const creator of creators || []) {
+    try {
+      const result = await inviteCreatorPortalAccess({ id: String(creator.id), full_name: String(creator.full_name || "Creator") }, String(creator.email));
+      if (result.invited) sent += 1;
+      else skipped += 1;
+    } catch (inviteError) {
+      console.error("Community creator invitation failed", creator.id, inviteError);
+    }
+  }
+
+  return { ok: true, message: `${sent} community portal invite${sent === 1 ? "" : "s"} sent${skipped ? `, ${skipped} already active` : ""}.` };
 }
 
 export async function updateCampaignApplicationStatus(applicationId: string, status: CampaignApplication["status"], reviewerId?: string) {

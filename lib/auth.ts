@@ -5,6 +5,7 @@ import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/server";
 import { cleanEnv } from "@/lib/clean-env";
+import { siteUrl } from "@/lib/env";
 import { sellerAuthEmailFromIdentifier, sellerUsernameToAuthEmail } from "@/lib/seller-login";
 import type { Creator, Role, Seller } from "@/lib/types";
 
@@ -150,6 +151,55 @@ export async function ensureCreatorAuthUser(creator: Creator, email: string, pas
   if (error) throw error;
 
   return user;
+}
+
+export async function inviteCreatorPortalAccess(creator: Pick<Creator, "id" | "full_name">, email: string) {
+  const admin = createServiceClient();
+  const normalizedEmail = email.trim().toLowerCase();
+  const existing = await findAuthUserByEmail(normalizedEmail);
+  let user = existing;
+
+  if (!user) {
+    const { data, error } = await admin.auth.admin.inviteUserByEmail(normalizedEmail, {
+      data: { full_name: creator.full_name },
+      redirectTo: `${siteUrl()}/auth/callback?next=/creator/set-password`
+    });
+    if (error) throw error;
+    user = data.user;
+  }
+
+  if (!user) throw new Error("Creator invitation did not return an auth user.");
+
+  await admin.from("profiles").upsert({
+    id: user.id,
+    full_name: creator.full_name,
+    email: normalizedEmail
+  });
+
+  const { error } = await admin.from("creator_accounts").upsert(
+    {
+      creator_id: creator.id,
+      user_id: user.id,
+      email: normalizedEmail,
+      status: existing ? "active" : "pending",
+      invited_at: new Date().toISOString(),
+      activated_at: existing ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString()
+    },
+    { onConflict: "creator_id" }
+  );
+  if (error) throw error;
+
+  return { invited: !existing, email: normalizedEmail };
+}
+
+export async function activateCreatorAccount(userId: string) {
+  const admin = createServiceClient();
+  const { error } = await admin
+    .from("creator_accounts")
+    .update({ status: "active", activated_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("user_id", userId);
+  if (error) throw error;
 }
 
 export function loginIdentifierToEmail(role: string, identifier: string) {

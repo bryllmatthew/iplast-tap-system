@@ -4,6 +4,8 @@ import { CalendarDays, Clock, MapPin, Sparkles } from "lucide-react";
 import { listEvents } from "@/lib/repository";
 import { eventTimeRange, shortDate } from "@/lib/format";
 import { eventRegistrationStatusLabel, isEventRegistrationOpen } from "@/lib/event-registration";
+import QRCode from "qrcode";
+import { appUrl } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,8 @@ export default async function VisMinCreatorsClubPage() {
   const events = await listEvents();
   const featured = events.find((event) => isEventRegistrationOpen(event));
   const visibleEvents = events.slice(0, 3);
+  const communityUrl = appUrl("/vismincreatorsclub/community");
+  const communityQrImage = await QRCode.toDataURL(communityUrl, { margin: 1, width: 420 });
 
   return (
     <main>
@@ -43,6 +47,15 @@ export default async function VisMinCreatorsClubPage() {
                 Join Creator Community
               </Link>
             </div>
+
+          <div className="tap-card flex max-w-xl flex-col gap-4 p-5 sm:flex-row sm:items-center">
+            <img className="size-40 rounded-lg border border-slate-200 bg-white p-2" src={communityQrImage} alt="QR code to join the VisMin Creators Club community" />
+            <div>
+              <p className="text-sm font-black uppercase text-cyan-700">Join the community</p>
+              <h2 className="mt-1 text-xl font-black text-ink">Scan to join VisMin Creators Club</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Scan this QR code to open the community signup form.</p>
+            </div>
+          </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

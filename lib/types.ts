@@ -69,6 +69,7 @@ export type Creator = {
   email: string;
   mobile: string;
   location: string;
+  shipping_address?: string;
   follower_count: number;
   gmv_max_total: number;
   creator_category: string;

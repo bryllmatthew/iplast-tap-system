@@ -177,6 +177,7 @@ function creatorFromRow(row: Record<string, unknown>): Creator {
     email: String(row.email || ""),
     mobile: String(row.mobile || ""),
     location: String(row.location || ""),
+    shipping_address: String(row.shipping_address || ""),
     follower_count: Number(row.follower_count || 0),
     gmv_max_total: Number(row.gmv_max_total || 0),
     creator_category: String(row.creator_category || ""),
@@ -419,7 +420,7 @@ async function loadDbStateUncached(): Promise<DemoState | null> {
     supabase.from("event_sellers").select("id,event_id,seller_id,booth_name,booth_number,status"),
     supabase
       .from("creators")
-      .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes,community_joined_at,community_joined_via")
+      .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,shipping_address,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes,community_joined_at,community_joined_via")
       .order("created_at", { ascending: false }),
     supabase.from("event_form_responses").select("id,event_id,creator_id,form_version_id,field_snapshot,answers,submitted_at"),
     supabase.from("event_registrations").select("id,event_id,creator_id,form_response_id,registration_status,registered_at,approved_at,notes"),
@@ -1432,7 +1433,7 @@ export async function listAdminCampaigns() {
     const { data: creatorRows } = creatorIds.length
       ? await supabase
         .from("creators")
-        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,shipping_address,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
         .in("id", creatorIds)
       : { data: [] };
     const creators = mapById((creatorRows || []).map(creatorFromRow));
@@ -2280,7 +2281,7 @@ export async function listRegistrations(eventId?: string, query = ""): Promise<R
     const [creatorsResult, responsesResult, attendanceResult, qrsResult] = await Promise.all([
       supabase
         .from("creators")
-        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,shipping_address,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
         .in("id", creatorIds),
       supabase
         .from("event_form_responses")
@@ -2372,7 +2373,7 @@ export async function listAttendedCreators(query = "") {
     const [creatorsResult, registrationsResult, eventsResult, claimsResult] = await Promise.all([
       supabase
         .from("creators")
-        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,shipping_address,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
         .in("id", unique(attendanceRowsMapped.map((attendance) => attendance.creator_id))),
       supabase
         .from("event_registrations")
@@ -2448,7 +2449,7 @@ export async function listCreatorDatabase(query = "") {
   if (supabase) {
     const { data: creatorRows, error } = await supabase
       .from("creators")
-      .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes,community_joined_at,community_joined_via")
+      .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,shipping_address,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes,community_joined_at,community_joined_via")
       .order("created_at", { ascending: false });
     if (error) {
       console.error("Failed to load creator database", error);
@@ -2487,7 +2488,7 @@ export async function getCreatorDetail(creatorId: string) {
   if (supabase) {
     const { data: creatorRow, error } = await supabase
       .from("creators")
-      .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+    .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,shipping_address,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
       .eq("id", creatorId)
       .maybeSingle();
     if (error) console.error("Failed to load creator detail", error);
@@ -2907,9 +2908,13 @@ export async function joinCreatorCommunity(formData: FormData) {
   const fullName = String(formData.get("full_name") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const mobile = String(formData.get("viber_number") || "").trim();
+  const shippingAddress = String(formData.get("shipping_address") || "").trim();
   const tiktokUsername = String(formData.get("tiktok_username") || "").trim().replace(/^@/, "");
+  const tiktokFollowers = Number(formData.get("tiktok_follower_count") || 0);
   const tiktokProfileUrl = String(formData.get("tiktok_profile_url") || "").trim();
-  if (!fullName || !email || !mobile) return { ok: false, message: "Name, email, and Viber number are required." };
+  if (!fullName || !email || !mobile || !shippingAddress || !tiktokUsername || !tiktokProfileUrl || !tiktokFollowers) {
+    return { ok: false, message: "Please complete all required community fields." };
+  }
 
   const supabase = await ensureOrganization();
   if (!supabase) return { ok: false, message: "Community registration requires Supabase." };
@@ -2927,6 +2932,8 @@ export async function joinCreatorCommunity(formData: FormData) {
     tiktok_profile_url: tiktokProfileUrl || null,
     email,
     mobile,
+    shipping_address: shippingAddress,
+    follower_count: tiktokFollowers,
     notes: "Joined VisMin Creators Club community.",
     community_joined_at: new Date().toISOString(),
     community_joined_via: "public_community_signup",
@@ -2934,7 +2941,7 @@ export async function joinCreatorCommunity(formData: FormData) {
   };
   const query = existing
     ? supabase.from("creators").update(payload).eq("id", existing.id)
-    : supabase.from("creators").insert({ organization_id: defaultOrganizationId, follower_count: 0, gmv_max_total: 0, creator_category: "", content_categories: [], affiliate_experience: "", ...payload });
+    : supabase.from("creators").insert({ organization_id: defaultOrganizationId, gmv_max_total: 0, creator_category: "", content_categories: [], affiliate_experience: "", ...payload });
   const { error } = await query;
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: "Welcome to the VisMin Creators Club community." };
@@ -3278,7 +3285,7 @@ export async function validateQrForSeller(eventId: string, token: string): Promi
       supabase.from("events").select(eventSelect).eq("id", qr.event_id).maybeSingle(),
       supabase
         .from("creators")
-        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,shipping_address,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
         .eq("id", qr.creator_id)
         .maybeSingle(),
       supabase
@@ -3681,7 +3688,7 @@ export async function getClaimRows(eventId?: string) {
       supabase.from("events").select(eventSelect).in("id", unique(claims.map((claim) => claim.event_id))),
       supabase
         .from("creators")
-        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,shipping_address,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
         .in("id", unique(claims.map((claim) => claim.creator_id))),
       supabase.from("brands").select("id,seller_id,brand_name,logo_url,description,status").in("id", unique(claims.map((claim) => claim.brand_id))),
       supabase
@@ -3750,7 +3757,7 @@ export async function getQrPage(token: string) {
       supabase.from("events").select(eventSelect).eq("id", qr.event_id).maybeSingle(),
       supabase
         .from("creators")
-        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
+        .select("id,full_name,tiktok_username,tiktok_profile_url,email,mobile,location,shipping_address,follower_count,gmv_max_total,creator_category,content_categories,affiliate_experience,profile_image,notes")
         .eq("id", qr.creator_id)
         .maybeSingle(),
       supabase

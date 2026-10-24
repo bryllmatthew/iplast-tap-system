@@ -1,6 +1,9 @@
 import Link from "next/link";
+import QRCode from "qrcode";
 
 import { saveCommunitySettingsAction } from "@/app/actions";
+import { CommunityQrActions } from "@/components/CommunityQrActions";
+import { appUrl } from "@/lib/env";
 import { getCommunitySettings } from "@/lib/repository";
 
 export default async function AdminCommunityPage({
@@ -10,6 +13,8 @@ export default async function AdminCommunityPage({
 }) {
   const settings = await getCommunitySettings();
   const query = await searchParams;
+  const communityUrl = appUrl("/vismincreatorsclub/community");
+  const communityQrImage = await QRCode.toDataURL(communityUrl, { margin: 1, width: 420 });
 
   return (
     <section className="space-y-5">
@@ -47,6 +52,16 @@ export default async function AdminCommunityPage({
         {settings.viber_qr_image_url ? <img className="max-h-64 w-64 rounded-lg border border-slate-200 bg-white object-contain p-3" src={settings.viber_qr_image_url} alt="Viber community QR code" /> : null}
         <button className="tap-button tap-button-primary w-fit" type="submit">Save Community Settings</button>
       </form>
+
+      <section className="tap-card flex flex-col gap-5 p-5 sm:flex-row sm:items-center">
+        <img className="size-48 rounded-lg border border-slate-200 bg-white p-2" src={communityQrImage} alt="Community signup QR code" />
+        <div>
+          <p className="text-sm font-black uppercase text-cyan-700">Admin-only QR controls</p>
+          <h2 className="mt-1 text-xl font-black text-ink">Community signup QR code</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Download this QR for Facebook posts, print materials, or event promotions. It opens the public community signup form.</p>
+          <CommunityQrActions image={communityQrImage} communityUrl={communityUrl} />
+        </div>
+      </section>
     </section>
   );
 }

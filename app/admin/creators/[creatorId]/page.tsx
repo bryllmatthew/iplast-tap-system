@@ -64,6 +64,7 @@ export default async function CreatorDetailPage({
             <Info label="Email" value={creator.email} />
             <Info label="Mobile" value={creator.mobile} />
             <Info label="Location" value={creator.location} />
+            <Info label="Shipping Address" value={creator.shipping_address || creator.location} />
             <Info label="TikTok Followers" value={number(creator.follower_count)} />
             <Info label="Shopee Followers" value={number(shopeeFollowers)} />
             <Info label="TikTok Last Month GMV" value={currency(tikTokGmv)} />

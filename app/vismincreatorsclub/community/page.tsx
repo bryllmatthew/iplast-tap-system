@@ -43,13 +43,21 @@ export default async function CreatorCommunityPage({
             Viber Number <span className="text-red-400">*</span>
             <input className="tap-input" name="viber_number" required type="tel" />
           </label>
+          <label className="tap-label md:col-span-2">
+            Complete Shipping Address <span className="text-red-400">*</span>
+            <textarea className="tap-input min-h-24" name="shipping_address" required />
+          </label>
           <label className="tap-label">
-            TikTok Username
-            <input className="tap-input" name="tiktok_username" placeholder="@username" />
+            TikTok Username <span className="text-red-400">*</span>
+            <input className="tap-input" name="tiktok_username" required placeholder="@username" />
+          </label>
+          <label className="tap-label">
+            TikTok Follower <span className="text-red-400">*</span>
+            <input className="tap-input" name="tiktok_follower_count" required type="number" min="1" />
           </label>
           <label className="tap-label md:col-span-2">
-            TikTok Profile Link
-            <input className="tap-input" name="tiktok_profile_url" type="url" placeholder="https://www.tiktok.com/@username" />
+            TikTok Profile Link <span className="text-red-400">*</span>
+            <input className="tap-input" name="tiktok_profile_url" required type="url" placeholder="https://www.tiktok.com/@username" />
           </label>
           <button className="tap-button tap-button-primary md:col-span-2" type="submit">Join Creator Community</button>
         </form>

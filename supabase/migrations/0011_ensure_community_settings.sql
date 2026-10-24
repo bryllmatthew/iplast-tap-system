@@ -11,6 +11,9 @@ create table if not exists public.creator_community_settings (
   updated_at timestamptz not null default now()
 );
 
+alter table public.creators add column if not exists community_joined_at timestamptz;
+alter table public.creators add column if not exists community_joined_via text;
+
 alter table public.creator_community_settings enable row level security;
 
 drop policy if exists "admin manage community settings" on public.creator_community_settings;

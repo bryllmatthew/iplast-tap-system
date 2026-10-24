@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { grantCreatorPortalAccessAction } from "@/app/actions";
+import { grantCreatorPortalAccessAction, sendCreatorPortalInviteAction } from "@/app/actions";
 import { currency, number, shortDate, time } from "@/lib/format";
 import { creatorPlatformTags } from "@/lib/platform-tags";
 import { getCreatorDetail } from "@/lib/repository";
@@ -95,6 +95,12 @@ export default async function CreatorDetailPage({
             <div className={`mt-4 rounded-lg border p-3 text-sm font-bold ${query.portalResult === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>
               {query.portalMessage}
             </div>
+          ) : null}
+          {creator.community_joined_at && !portalAccount ? (
+            <form action={sendCreatorPortalInviteAction} className="mt-5">
+              <input type="hidden" name="creator_id" value={creator.id} />
+              <button className="tap-button tap-button-secondary" type="submit">Send Creator Portal Invite</button>
+            </form>
           ) : null}
           <form action={grantCreatorPortalAccessAction} className="mt-5 grid gap-3 sm:grid-cols-2">
             <input type="hidden" name="creator_id" value={creator.id} />

@@ -18,7 +18,6 @@ import {
   deleteSeller,
   getCreatorDetail,
   getSellerDetail,
-  inviteCommunityCreators,
   issueSampleClaim,
   removeSellerEvent,
   joinCreatorCommunity,
@@ -37,7 +36,7 @@ import {
   updateEventSchedule,
   updateEventRegistrationForm
 } from "@/lib/repository";
-import { activateCreatorAccount, ensureCreatorAuthUser, ensureDefaultAdminUser, ensureSellerAuthUser, loginIdentifierToEmail, requireAuth, userHasRole } from "@/lib/auth";
+import { activateCreatorAccount, ensureCreatorAuthUser, ensureDefaultAdminUser, ensureSellerAuthUser, inviteCreatorPortalAccess, loginIdentifierToEmail, requireAuth, userHasRole } from "@/lib/auth";
 import { cleanEnv } from "@/lib/clean-env";
 import { appUrl } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -530,11 +529,35 @@ export async function activateCreatorAccountAction() {
   }
 }
 
-export async function inviteCommunityCreatorsAction() {
-  await requireAuth("admin");
-  const result = await inviteCommunityCreators();
-  revalidatePath("/admin/creators");
-  redirect(`/admin/creators?message=${encodeURIComponent(result.message)}&result=${result.ok ? "success" : "error"}`);
+export async function sendCreatorPortalInviteAction(formData: FormData) {
+  const adminUser = await requireAuth("admin");
+  const creatorId = String(formData.get("creator_id") || "");
+  const detail = creatorId ? await getCreatorDetail(creatorId) : null;
+  let ok = false;
+  let message = "Creator not found.";
+
+  if (detail) {
+    if (!detail.creator.community_joined_at) {
+      message = "Only community members can receive a community portal invite.";
+    } else if (!detail.creator.email || !detail.creator.email.includes("@")) {
+      message = "This creator does not have a valid email address.";
+    } else {
+      try {
+        const result = await inviteCreatorPortalAccess(
+          { id: detail.creator.id, full_name: detail.creator.full_name },
+          detail.creator.email
+        );
+        message = result.invited ? "Creator portal invite sent." : "This creator already has a portal account.";
+        ok = true;
+      } catch (error) {
+        console.error("Creator portal invite failed", error, adminUser.id);
+        message = "Could not send the creator portal invite.";
+      }
+    }
+  }
+
+  revalidatePath(`/admin/creators/${creatorId}`);
+  redirect(`/admin/creators/${creatorId}?portalMessage=${encodeURIComponent(message)}&portalResult=${ok ? "success" : "error"}`);
 }
 
 export async function updateSellerAction(formData: FormData) {

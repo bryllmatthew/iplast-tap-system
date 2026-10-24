@@ -3,14 +3,13 @@ import { Search, Users } from "lucide-react";
 
 import { number, shortDate } from "@/lib/format";
 import { listCreatorDatabase } from "@/lib/repository";
-import { inviteCommunityCreatorsAction } from "@/app/actions";
 
 export default async function CreatorsDatabasePage({
   searchParams
 }: {
   searchParams: Promise<{ q?: string; message?: string; result?: string }>;
 }) {
-  const { q = "", message, result } = await searchParams;
+  const { q = "" } = await searchParams;
   const rows = await listCreatorDatabase(q);
 
   return (
@@ -21,7 +20,6 @@ export default async function CreatorsDatabasePage({
             <p className="text-sm font-black uppercase text-cyan-700">Creators Database</p>
             <h1 className="mt-2 text-3xl font-black text-ink">Creator database</h1>
         <p className="mt-2 text-slate-600">Creators who joined the community or attended a TAP event.</p>
-            {message ? <div className={`mt-4 rounded-lg border p-3 text-sm font-bold ${result === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>{message}</div> : null}
           </div>
           <form>
             <label className="tap-label">
@@ -33,9 +31,6 @@ export default async function CreatorsDatabasePage({
             </label>
           </form>
         </div>
-        <form action={inviteCommunityCreatorsAction} className="mt-4">
-          <button className="tap-button tap-button-secondary" type="submit">Send Community Portal Invites</button>
-        </form>
       </div>
 
       <div className="tap-card divide-y divide-slate-100 overflow-hidden md:hidden">

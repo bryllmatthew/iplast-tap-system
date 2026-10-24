@@ -2983,32 +2983,6 @@ export async function joinCreatorCommunity(formData: FormData) {
   return { ok: true, message: "Welcome to the VisMin Creators Club community. Check your email for Creator Portal access." };
 }
 
-export async function inviteCommunityCreators() {
-  const supabase = createServiceClient();
-  if (!supabase) return { ok: false, message: "Community portal invites require Supabase." };
-
-  const { data: creators, error } = await supabase
-    .from("creators")
-    .select("id,full_name,email")
-    .not("community_joined_at", "is", null)
-    .not("email", "is", null);
-  if (error) return { ok: false, message: error.message };
-
-  let sent = 0;
-  let skipped = 0;
-  for (const creator of creators || []) {
-    try {
-      const result = await inviteCreatorPortalAccess({ id: String(creator.id), full_name: String(creator.full_name || "Creator") }, String(creator.email));
-      if (result.invited) sent += 1;
-      else skipped += 1;
-    } catch (inviteError) {
-      console.error("Community creator invitation failed", creator.id, inviteError);
-    }
-  }
-
-  return { ok: true, message: `${sent} community portal invite${sent === 1 ? "" : "s"} sent${skipped ? `, ${skipped} already active` : ""}.` };
-}
-
 export async function updateCampaignApplicationStatus(applicationId: string, status: CampaignApplication["status"], reviewerId?: string) {
   const allowed: CampaignApplication["status"][] = ["applied", "under_review", "approved", "rejected", "waitlisted", "withdrawn"];
   if (!allowed.includes(status)) return { ok: false, message: "Invalid campaign application status." };

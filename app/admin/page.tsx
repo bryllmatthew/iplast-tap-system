@@ -15,10 +15,10 @@ export default async function AdminDashboard() {
   const samplesIssued = claims.reduce((total, { claim }) => total + claim.quantity, 0);
 
   const cards = [
-    ["Events", number(events.length), CalendarDays, "Manage event setup and event-level stats", "/admin/events"],
-    ["Creators", number(uniqueCreatorIds.size), Users, "Checked-in creators database", "/admin/creators"],
-    ["Sellers", number(sellers.length), Store, "Seller accounts and event assignments", "/admin/sellers"],
-    ["Samples Issued", number(samplesIssued), PackageCheck, "Total product samples claimed", "/admin/reports"]
+    { label: "Events", value: number(events.length), Icon: CalendarDays, helper: "Manage event setup and event-level stats", href: "/admin/events", accent: "blue" },
+    { label: "Creators", value: number(uniqueCreatorIds.size), Icon: Users, helper: "Checked-in creators database", href: "/admin/creators", accent: "purple" },
+    { label: "Sellers", value: number(sellers.length), Icon: Store, helper: "Seller accounts and event assignments", href: "/admin/sellers", accent: "orange" },
+    { label: "Samples Issued", value: number(samplesIssued), Icon: PackageCheck, helper: "Total product samples claimed", href: "/admin/reports", accent: "green" }
   ] as const;
 
   return (
@@ -34,8 +34,8 @@ export default async function AdminDashboard() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {cards.map(([label, value, Icon, helper, href]) => (
-          <Link key={label} className="tap-card block p-5 hover:border-cyan-400" href={href}>
+        {cards.map(({ label, value, Icon, helper, href, accent }) => (
+          <Link key={label} className={`tap-card tap-card-accent-${accent} block p-5 hover:border-cyan-400`} href={href}>
             <Icon className="mb-4 size-6 text-cyan-700" />
             <p className="text-sm font-bold text-slate-500">{label}</p>
             <p className="mt-1 text-3xl font-black text-ink">{value}</p>

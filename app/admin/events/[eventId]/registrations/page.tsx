@@ -7,7 +7,7 @@ import {
 } from "@/app/actions";
 import { currency, number, shortDate } from "@/lib/format";
 import { getEventById, listRegistrations } from "@/lib/repository";
-import { registrationStatusClass } from "@/lib/status";
+import { attendanceStatusClass, registrationStatusClass } from "@/lib/status";
 
 export default async function RegistrationsPage({
   params,
@@ -164,7 +164,7 @@ export default async function RegistrationsPage({
                   </span>
                 </td>
                 <td className="p-4">
-                  <span className="status-pill bg-slate-100 text-slate-700">{attendance?.status || "not_checked_in"}</span>
+                  <span className={`status-pill ${attendanceStatusClass(attendance?.status || "not_checked_in")}`}>{attendance?.status || "not_checked_in"}</span>
                 </td>
                 <td className="p-4">
                   <div className="flex flex-wrap gap-2">

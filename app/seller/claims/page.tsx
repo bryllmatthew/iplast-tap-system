@@ -2,6 +2,7 @@ import { Filter } from "lucide-react";
 
 import { number, shortDate, time } from "@/lib/format";
 import { getClaimRows, listSellerDashboard } from "@/lib/repository";
+import { claimStatusClass } from "@/lib/status";
 
 export default async function SellerClaimsPage({
   searchParams
@@ -63,7 +64,7 @@ export default async function SellerClaimsPage({
                   {event.event_name} - {shortDate(event.event_date)}
                 </p>
               </div>
-              <span className="status-pill bg-green-50 text-green-700">{claim.status}</span>
+              <span className={`status-pill ${claimStatusClass(claim.status)}`}>{claim.status}</span>
             </div>
             <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
               <span>Quantity: {number(claim.quantity)}</span>

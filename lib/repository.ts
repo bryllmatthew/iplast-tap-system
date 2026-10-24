@@ -2472,10 +2472,14 @@ export async function listCreatorDatabase(query = "") {
     const [{ data: attendanceRows }, { data: registrationRows }] = creatorIds.length
       ? await Promise.all([
           supabase.from("event_attendance").select("creator_id,status,checked_in_at").in("creator_id", creatorIds).eq("status", "checked_in"),
-          supabase.from("event_registrations").select("creator_id").in("creator_id", creatorIds)
+          supabase.from("event_registrations").select("creator_id,registration_status").in("creator_id", creatorIds)
         ])
       : [{ data: [] }, { data: [] }];
-    const eventCreatorIds = new Set((registrationRows || []).map((row) => String(row.creator_id)));
+    const approvedCreatorIds = new Set(
+      (registrationRows || [])
+        .filter((row) => row.registration_status === "approved")
+        .map((row) => String(row.creator_id))
+    );
     const attendanceMap = new Map<string, { count: number; latest?: string }>();
     for (const row of attendanceRows || []) {
       const current = attendanceMap.get(String(row.creator_id)) || { count: 0 };
@@ -2485,10 +2489,10 @@ export async function listCreatorDatabase(query = "") {
       attendanceMap.set(String(row.creator_id), current);
     }
     return creators
-      .filter((creator) => Boolean(creator.community_joined_at) || attendanceMap.has(creator.id))
+      .filter((creator) => Boolean(creator.community_joined_at) || approvedCreatorIds.has(creator.id))
       .map((creator) => ({
         creator,
-        isEventCreator: attendanceMap.has(creator.id),
+        isEventCreator: approvedCreatorIds.has(creator.id),
         attendedEvents: attendanceMap.get(creator.id)?.count || 0,
         latestCheckedInAt: attendanceMap.get(creator.id)?.latest
       }));
@@ -2506,7 +2510,7 @@ export async function listCreatorDatabase(query = "") {
       };
     })
     .filter(({ creator, isEventCreator }) =>
-      (Boolean(creator.community_joined_at) || isEventCreator) &&
+      (Boolean(creator.community_joined_at) || isEventCreator || s.registrations.some((registration) => registration.creator_id === creator.id && registration.registration_status === "approved")) &&
       (!needle || [creator.full_name, creator.email, creator.mobile, creator.tiktok_username, creator.location].some((value) => value.toLowerCase().includes(needle)))
     );
 }

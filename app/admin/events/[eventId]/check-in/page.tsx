@@ -3,7 +3,7 @@ import Link from "next/link";
 import { checkInCreatorAction } from "@/app/actions";
 import { currency, number, time } from "@/lib/format";
 import { listRegistrations } from "@/lib/repository";
-import { registrationStatusClass } from "@/lib/status";
+import { attendanceStatusClass, registrationStatusClass } from "@/lib/status";
 
 export default async function CheckInPage({
   params,
@@ -49,7 +49,7 @@ export default async function CheckInPage({
                   <span className={`status-pill ${registrationStatusClass(registration.registration_status)}`}>
                     {registration.registration_status}
                   </span>
-                  <span className="status-pill bg-slate-100 text-slate-700">{attendance?.status || "not_checked_in"}</span>
+                  <span className={`status-pill ${attendanceStatusClass(attendance?.status || "not_checked_in")}`}>{attendance?.status || "not_checked_in"}</span>
                 </div>
                 <p className="mt-1 font-bold text-slate-500">@{creator.tiktok_username}</p>
                 <div className="mt-3 grid gap-3 text-sm text-slate-600 sm:grid-cols-3">

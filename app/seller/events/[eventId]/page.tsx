@@ -4,6 +4,7 @@ import { ClipboardList, PackageCheck } from "lucide-react";
 import { RemoveSellerEventButton } from "@/components/RemoveSellerEventButton";
 import { number } from "@/lib/format";
 import { listSellerDashboard } from "@/lib/repository";
+import { eventStatusClass } from "@/lib/status";
 
 export default async function SellerEventPage({
   params
@@ -18,7 +19,7 @@ export default async function SellerEventPage({
       <div className="tap-card overflow-hidden">
         <img className="h-44 w-full object-cover" src={dashboard.event.poster_url} alt="" />
         <div className="p-5">
-          <span className="status-pill bg-green-50 text-green-700">{dashboard.event.status}</span>
+          <span className={`status-pill ${eventStatusClass(dashboard.event.status)}`}>{dashboard.event.status}</span>
           <h1 className="mt-3 text-3xl font-black text-ink">{dashboard.event.event_name}</h1>
           <p className="mt-2 text-slate-600">{dashboard.eventSeller.booth_name} - {dashboard.eventSeller.booth_number}</p>
           <div className="mt-5">

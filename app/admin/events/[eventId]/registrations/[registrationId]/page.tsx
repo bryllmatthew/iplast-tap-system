@@ -8,7 +8,7 @@ import {
 } from "@/app/actions";
 import { currency, number, shortDate } from "@/lib/format";
 import { getRegistrationDetail } from "@/lib/repository";
-import { registrationStatusClass } from "@/lib/status";
+import { attendanceStatusClass, qrStatusClass, registrationStatusClass } from "@/lib/status";
 
 export default async function RegistrationDetailPage({
   params
@@ -38,8 +38,8 @@ export default async function RegistrationDetailPage({
             <span className={`status-pill ${registrationStatusClass(registration.registration_status)}`}>
               {registration.registration_status}
             </span>
-            <span className="status-pill bg-slate-100 text-slate-700">{attendance?.status || "not_checked_in"}</span>
-            {qr ? <span className="status-pill bg-green-50 text-green-700">{qr.status}</span> : null}
+            <span className={`status-pill ${attendanceStatusClass(attendance?.status || "not_checked_in")}`}>{attendance?.status || "not_checked_in"}</span>
+            {qr ? <span className={`status-pill ${qrStatusClass(qr.status)}`}>{qr.status}</span> : null}
           </div>
         </div>
       </div>

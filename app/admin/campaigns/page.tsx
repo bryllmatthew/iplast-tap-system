@@ -3,6 +3,7 @@ import { Megaphone, Plus } from "lucide-react";
 
 import { number } from "@/lib/format";
 import { listAdminCampaigns } from "@/lib/repository";
+import { campaignStatusClass } from "@/lib/status";
 
 export default async function AdminCampaignsPage({
   searchParams
@@ -42,7 +43,7 @@ export default async function AdminCampaignsPage({
                 <h2 className="text-xl font-black text-ink">{campaign.campaign_name}</h2>
                 <p className="mt-1 text-sm font-bold text-slate-500">{brand?.brand_name || "Brand"} - {seller?.company_name || "Seller"}</p>
               </div>
-              <span className="status-pill bg-cyan-50 text-cyan-700">{campaign.status}</span>
+              <span className={`status-pill ${campaignStatusClass(campaign.status)}`}>{campaign.status}</span>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <Info label="Commission" value={`${number(campaign.open_plan_commission)}%`} />

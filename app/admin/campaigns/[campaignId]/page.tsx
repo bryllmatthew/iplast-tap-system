@@ -6,6 +6,7 @@ import { CampaignForm } from "@/components/CampaignForm";
 import { number, time } from "@/lib/format";
 import { getCampaignDetail, listCampaignBrandOptions } from "@/lib/repository";
 import type { CampaignApplication } from "@/lib/types";
+import { campaignApplicationStatusClass, campaignOutputStatusClass, campaignStatusClass } from "@/lib/status";
 
 export default async function AdminCampaignDetailPage({
   params,
@@ -33,7 +34,7 @@ export default async function AdminCampaignDetailPage({
             <p className="mt-2 text-slate-600">{detail.brand?.brand_name || "Brand"} - {detail.seller?.company_name || "Seller"}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <span className="status-pill bg-cyan-50 text-cyan-700">{detail.campaign.status}</span>
+            <span className={`status-pill ${campaignStatusClass(detail.campaign.status)}`}>{detail.campaign.status}</span>
             <Link className="tap-button tap-button-primary" href={`/admin/campaigns/${detail.campaign.id}?edit=1`}>
               Edit Campaign
             </Link>
@@ -118,7 +119,7 @@ export default async function AdminCampaignDetailPage({
                   <div className="mt-3 rounded-lg border border-slate-200 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm font-black text-ink">Final Output</p>
-                      <span className="status-pill bg-slate-100 text-slate-700">{output?.status || "not_submitted"}</span>
+                      <span className={`status-pill ${campaignOutputStatusClass(output?.status || "not_submitted")}`}>{output?.status || "not_submitted"}</span>
                     </div>
                     {output?.final_output_link ? <a className="mt-2 block break-all text-sm font-bold text-cyan-700 underline" href={output.final_output_link} target="_blank" rel="noreferrer">Open submitted output</a> : null}
                     {output?.submission_notes ? <p className="mt-2 text-sm text-slate-500">{output.submission_notes}</p> : null}
@@ -136,7 +137,7 @@ export default async function AdminCampaignDetailPage({
                 ) : null}
               </div>
               <div className="flex flex-wrap items-start gap-2 xl:justify-end">
-                <span className="status-pill bg-slate-100 text-slate-700">{application.status}</span>
+                <span className={`status-pill ${campaignApplicationStatusClass(application.status)}`}>{application.status}</span>
                 <ApplicationStatusButton application={application} campaignId={detail.campaign.id} status="under_review" label="Review" />
                 <ApplicationStatusButton application={application} campaignId={detail.campaign.id} status="approved" label="Approve" />
                 <ApplicationStatusButton application={application} campaignId={detail.campaign.id} status="waitlisted" label="Waitlist" />

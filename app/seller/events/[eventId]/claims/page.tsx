@@ -2,6 +2,7 @@ import { Filter } from "lucide-react";
 
 import { number, time } from "@/lib/format";
 import { getClaimRows, listSellerDashboard } from "@/lib/repository";
+import { claimStatusClass } from "@/lib/status";
 
 export default async function SellerClaimsPage({
   params,
@@ -61,7 +62,7 @@ export default async function SellerClaimsPage({
                 <p className="text-sm text-slate-500">{brand.brand_name} - @{creator.tiktok_username}</p>
                 <p className="mt-1 text-xs text-slate-500">{creator.full_name}</p>
               </div>
-              <span className="status-pill bg-green-50 text-green-700">{claim.status}</span>
+              <span className={`status-pill ${claimStatusClass(claim.status)}`}>{claim.status}</span>
             </div>
             <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
               <span>Quantity: {number(claim.quantity)}</span>

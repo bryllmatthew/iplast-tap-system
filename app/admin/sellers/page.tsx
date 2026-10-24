@@ -3,6 +3,7 @@ import { Pencil, Search, UserRound } from "lucide-react";
 
 import { sellerPlatformTags } from "@/lib/platform-tags";
 import { listSellerDatabaseRows } from "@/lib/repository";
+import { recordStatusClass } from "@/lib/status";
 
 export default async function SellersDatabasePage({
   searchParams
@@ -66,7 +67,7 @@ export default async function SellersDatabasePage({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <span className="status-pill bg-green-50 text-green-700">{seller.status}</span>
+              <span className={`status-pill ${recordStatusClass(seller.status)}`}>{seller.status}</span>
               <Link className="tap-button tap-button-secondary min-h-10 px-3 text-xs" href={`/admin/sellers/${seller.id}?edit=1`}>
                 <Pencil className="size-4" />
                 Edit

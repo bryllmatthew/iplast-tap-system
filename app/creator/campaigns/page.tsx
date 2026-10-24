@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireAuth } from "@/lib/auth";
 import { number } from "@/lib/format";
 import { listCreatorCampaigns } from "@/lib/repository";
+import { campaignApplicationStatusClass, campaignStatusClass } from "@/lib/status";
 
 export default async function CreatorCampaignsPage() {
   const user = await requireAuth("creator");
@@ -65,7 +66,7 @@ function CampaignCard({
           <h3 className="campaign-card-title mt-2 text-xl font-black text-ink">{campaign.campaign_name}</h3>
           <p className="campaign-card-meta mt-1 text-sm text-slate-500">{seller?.company_name || "TAP Campaign"}</p>
         </div>
-        <span className="status-pill bg-cyan-50 text-cyan-700">{application?.status || campaign.status}</span>
+        <span className={`status-pill ${application ? campaignApplicationStatusClass(application.status) : campaignStatusClass(campaign.status)}`}>{application?.status || campaign.status}</span>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Info label="Open Plan Commission" value={`${number(campaign.open_plan_commission)}%`} />

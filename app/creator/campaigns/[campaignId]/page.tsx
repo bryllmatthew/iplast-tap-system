@@ -5,6 +5,7 @@ import { applyToCampaignAction, submitCampaignOutputAction, submitCampaignPostin
 import { requireAuth } from "@/lib/auth";
 import { number } from "@/lib/format";
 import { getCreatorCampaignDetail } from "@/lib/repository";
+import { campaignApplicationStatusClass, campaignStatusClass } from "@/lib/status";
 
 export default async function CreatorCampaignDetailPage({
   params,
@@ -33,7 +34,7 @@ export default async function CreatorCampaignDetailPage({
             <h1 className="mt-2 text-3xl font-black text-ink">{campaign.campaign_name}</h1>
             <p className="mt-2 text-slate-600">{seller?.company_name || "TAP Campaign"}</p>
           </div>
-          <span className="status-pill bg-cyan-50 text-cyan-700">{application?.status || campaign.status}</span>
+          <span className={`status-pill ${application ? campaignApplicationStatusClass(application.status) : campaignStatusClass(campaign.status)}`}>{application?.status || campaign.status}</span>
         </div>
         {query.message ? (
           <div className={`mt-4 rounded-lg border p-3 text-sm font-bold ${query.result === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>

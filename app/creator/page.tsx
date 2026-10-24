@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth";
 import { number, shortDate } from "@/lib/format";
 import { getCreatorPortalOverview, listCreatorCampaigns } from "@/lib/repository";
-import { registrationStatusClass } from "@/lib/status";
+import { attendanceStatusClass, registrationStatusClass } from "@/lib/status";
 
 export default async function CreatorDashboardPage() {
   const user = await requireAuth("creator");
@@ -26,10 +26,10 @@ export default async function CreatorDashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric href="/creator/campaigns" icon={<Store className="size-5" />} label="Approved Campaigns" value={number(approvedCampaigns.length)} />
-        <Metric href="/creator/events" icon={<ClipboardList className="size-5" />} label="Event Registrations" value={number(activeRegistrations.length)} />
-        <Metric href="/creator/events" icon={<CalendarDays className="size-5" />} label="Events Attended" value={number(checkedInEvents.length)} />
-        <Metric href="/creator/events" icon={<PackageCheck className="size-5" />} label="Samples Claimed" value={number(samplesClaimed)} />
+        <Metric accent="purple" href="/creator/campaigns" icon={<Store className="size-5" />} label="Approved Campaigns" value={number(approvedCampaigns.length)} />
+        <Metric accent="blue" href="/creator/events" icon={<ClipboardList className="size-5" />} label="Event Registrations" value={number(activeRegistrations.length)} />
+        <Metric accent="green" href="/creator/events" icon={<CalendarDays className="size-5" />} label="Events Attended" value={number(checkedInEvents.length)} />
+        <Metric accent="orange" href="/creator/events" icon={<PackageCheck className="size-5" />} label="Samples Claimed" value={number(samplesClaimed)} />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
@@ -45,7 +45,7 @@ export default async function CreatorDashboardPage() {
                 <p className="mt-1 text-sm text-slate-500">{shortDate(event.event_date)} - {event.venue}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <span className={`status-pill ${registrationStatusClass(registration.registration_status)}`}>{registration.registration_status}</span>
-                  <span className="status-pill bg-slate-100 text-slate-700">{attendance?.status || "not_checked_in"}</span>
+                  <span className={`status-pill ${attendanceStatusClass(attendance?.status || "not_checked_in")}`}>{attendance?.status || "not_checked_in"}</span>
                 </div>
               </Link>
             ))}
@@ -72,9 +72,9 @@ export default async function CreatorDashboardPage() {
   );
 }
 
-function Metric({ href, icon, label, value }: { href: string; icon: React.ReactNode; label: string; value: string }) {
+function Metric({ accent, href, icon, label, value }: { accent: "blue" | "purple" | "green" | "orange"; href: string; icon: React.ReactNode; label: string; value: string }) {
   return (
-    <Link className="tap-card block p-4 hover:border-cyan-400" href={href}>
+    <Link className={`tap-card tap-card-accent-${accent} block p-4 hover:border-cyan-400`} href={href}>
       <div className="mb-3 text-cyan-700">{icon}</div>
       <p className="text-xs font-black uppercase text-slate-400">{label}</p>
       <p className="mt-1 text-2xl font-black text-ink">{value}</p>

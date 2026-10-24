@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 export function PublicHeader() {
   const pathname = usePathname();
-  if (pathname.startsWith("/admin") || pathname.startsWith("/seller")) return null;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/seller") || pathname.startsWith("/creator")) return null;
 
   return (
     <header className="border-b border-slate-200/70 bg-white/85 backdrop-blur">

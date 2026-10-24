@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth";
 import { eventTimeRange, number, shortDate, time } from "@/lib/format";
 import { getCreatorPortalOverview } from "@/lib/repository";
-import { registrationStatusClass } from "@/lib/status";
+import { attendanceStatusClass, registrationStatusClass } from "@/lib/status";
 
 export default async function CreatorEventsPage({
   searchParams
@@ -36,7 +36,7 @@ export default async function CreatorEventsPage({
             </div>
             <div className="flex flex-wrap gap-2">
               <span className={`status-pill ${registrationStatusClass(registration.registration_status)}`}>{registration.registration_status}</span>
-              <span className="status-pill bg-slate-100 text-slate-700">{attendance?.status || "not_checked_in"}</span>
+              <span className={`status-pill ${attendanceStatusClass(attendance?.status || "not_checked_in")}`}>{attendance?.status || "not_checked_in"}</span>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -101,7 +101,7 @@ export default async function CreatorEventsPage({
                   </div>
                   <div className="flex flex-wrap gap-2 md:justify-end">
                     <span className={`status-pill ${registrationStatusClass(registration.registration_status)}`}>{registration.registration_status}</span>
-                    <span className="status-pill bg-slate-100 text-slate-700">{attendance?.status || "not_checked_in"}</span>
+                    <span className={`status-pill ${attendanceStatusClass(attendance?.status || "not_checked_in")}`}>{attendance?.status || "not_checked_in"}</span>
                   </div>
                 </div>
               </Link>
